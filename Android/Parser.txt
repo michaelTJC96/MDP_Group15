@@ -1,0 +1,555 @@
+package com.example.mdp_group15_2021s2.util;
+
+import android.util.Log;
+import com.example.mdp_group15_2021s2.BuildConfig;
+import java.math.BigInteger;
+import java.util.Arrays;
+import kotlin.Metadata;
+import kotlin.TypeCastException;
+import kotlin.jvm.internal.DefaultConstructorMarker;
+import kotlin.jvm.internal.Intrinsics;
+import kotlin.jvm.internal.StringCompanionObject;
+import kotlin.text.StringsKt;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+
+public final class Parser {
+   private JSONObject payload;
+   private int robotX;
+   private int robotY;
+   @NotNull
+   private String robotDir = "";
+   @NotNull
+   private String robotStatus = "";
+   private String currentPayload = "";
+   @NotNull
+   private JSONArray images = new JSONArray();
+   private int tempX;
+   private int tempY = 3;
+   @NotNull
+   private String[][] exploredMap;
+   private boolean validPayload;
+   @NotNull
+   public static final String TAG = "Parser";
+   private static final boolean DEBUG;
+   @NotNull
+   private static String hexImage;
+   @NotNull
+   private static String hexMDF;
+   @NotNull
+   private static String hexExplored;
+   @NotNull
+   private static String mdfPayload;
+   public static final Parser.Companion Companion = new Parser.Companion((DefaultConstructorMarker)null);
+
+   public final int getRobotX() {
+      return this.robotX;
+   }
+
+   public final void setRobotX(int var1) {
+      this.robotX = var1;
+   }
+
+   public final int getRobotY() {
+      return this.robotY;
+   }
+
+   public final void setRobotY(int var1) {
+      this.robotY = var1;
+   }
+
+   @NotNull
+   public final String getRobotDir() {
+      return this.robotDir;
+   }
+
+   public final void setRobotDir(@NotNull String var1) {
+      Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+      this.robotDir = var1;
+   }
+
+   @NotNull
+   public final String getRobotStatus() {
+      return this.robotStatus;
+   }
+
+   public final void setRobotStatus(@NotNull String var1) {
+      Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+      this.robotStatus = var1;
+   }
+
+   @NotNull
+   public final JSONArray getImages() {
+      return this.images;
+   }
+
+   public final void setImages(@NotNull JSONArray var1) {
+      Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+      this.images = var1;
+   }
+
+   public final int getTempX() {
+      return this.tempX;
+   }
+
+   public final void setTempX(int var1) {
+      this.tempX = var1;
+   }
+
+   public final int getTempY() {
+      return this.tempY;
+   }
+
+   public final void setTempY(int var1) {
+      this.tempY = var1;
+   }
+
+   @NotNull
+   public final String[][] getExploredMap() {
+      return this.exploredMap;
+   }
+
+   public final void setExploredMap(@NotNull String[][] var1) {
+      Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+      this.exploredMap = var1;
+   }
+
+   public final boolean getValidPayload() {
+      return this.validPayload;
+   }
+
+   public final void setValidPayload(boolean var1) {
+      this.validPayload = var1;
+   }
+
+   public final void parse(@NotNull String payload) {
+      Intrinsics.checkParameterIsNotNull(payload, "payload");
+      JSONObject tmpPayload = null;
+      this.currentPayload = payload;
+
+      try {
+         tmpPayload = new JSONObject(payload);
+         this.payload = tmpPayload;
+         this.setRobot();
+         this.processImage();
+         this.setMDF();
+         this.processObsId();
+      } catch (JSONException var4) {
+         Log.d("Parser", "JSON EXCEPTION at parse");
+      }
+
+   }
+
+   private final void setRobot() {
+      JSONObject var10000 = this.payload;
+      if (var10000 != null) {
+         JSONObject var1 = var10000;
+         boolean var2 = false;
+         boolean var3 = false;
+         JSONObject it = var1;
+         boolean var5 = false;
+
+         try {
+            JSONArray robot = it.getJSONArray("robotPosition");
+            this.robotX = robot.getInt(0);
+            this.robotY = 19 - robot.getInt(1);
+            int angle = robot.getInt(2);
+            String var10001;
+            switch(angle) {
+            case 0:
+               var10001 = "UP";
+               break;
+            case 90:
+               var10001 = "RIGHT";
+               break;
+            case 180:
+               var10001 = "DOWN";
+               break;
+            case 270:
+               var10001 = "LEFT";
+               break;
+            default:
+               var10001 = "RIGHT";
+            }
+
+            this.robotDir = var10001;
+         } catch (JSONException var8) {
+            Log.d("Parser", "JSON EXCEPTION in set Robot");
+            this.validPayload = false;
+         } catch (IndexOutOfBoundsException var9) {
+            Log.d("Parser", "INDEX OUT OF BOUNDS EXCEPTION");
+            this.validPayload = false;
+         } catch (ClassCastException var10) {
+            Log.d("Parser", "CLASS CAST EXCEPTION");
+            this.validPayload = false;
+         }
+      }
+
+   }
+
+   public final boolean setStatus() {
+      boolean var1;
+      try {
+         String var4;
+         label17: {
+            JSONObject var10001 = this.payload;
+            if (var10001 != null) {
+               var4 = var10001.getString("status");
+               if (var4 != null) {
+                  break label17;
+               }
+            }
+
+            var4 = "Unknown";
+         }
+
+         this.robotStatus = var4;
+         var1 = true;
+      } catch (Exception var3) {
+         Log.d("Parser", "EXCEPTION");
+         var1 = false;
+      }
+
+      return var1;
+   }
+
+   public final void processObsId() {
+      hexImage = "";
+      int i = 0;
+
+      for(int var2 = this.images.length(); i < var2; ++i) {
+         JSONObject image = this.images.getJSONObject(i);
+         String imgID = image.getString("id");
+         int imgX = image.getInt("x");
+         int imgY = image.getInt("y");
+         String var10000 = hexImage;
+         StringBuilder var16 = (new StringBuilder()).append(var10000).append(" (");
+         Intrinsics.checkExpressionValueIsNotNull(imgID, "imgID");
+         StringBuilder var9 = var16;
+         boolean var8 = false;
+         int var10 = Integer.parseInt(imgID);
+         hexImage = var9.append(var10).append(',').append(imgX).append(',').append(imgY).append("),").toString();
+         StringBuilder var15 = (new StringBuilder()).append("Process Img i:").append(i).append(" x:").append(imgX).append(" y:").append(imgY).append(" id:");
+         String var14 = "Parser";
+         var8 = false;
+         int var11 = Integer.parseInt(imgID);
+         Log.e(var14, var15.append(var11).toString());
+         this.exploredMap[imgX][imgY] = imgID;
+      }
+
+      CharSequence var12 = (CharSequence)hexImage;
+      boolean var13 = false;
+      if (var12.length() > 0) {
+         hexImage = StringsKt.trimEnd(hexImage, new char[]{','});
+      }
+
+   }
+
+   public final void processImage() {
+      JSONObject var10000 = this.payload;
+      if (var10000 != null) {
+         JSONObject var1 = var10000;
+         boolean var2 = false;
+         boolean var3 = false;
+         JSONObject it = var1;
+         boolean var5 = false;
+
+         try {
+            JSONArray tempImages = it.getJSONArray("images");
+            JSONObject tempIncomingImg = null;
+            JSONObject tempExistingImg = null;
+            String imgID = null;
+            int removeIndex = false;
+            int incomX = false;
+            int incomY = false;
+            int removeIndex = 9999;
+            boolean removeIndexBool = false;
+            int i = 0;
+
+            for(int var15 = tempImages.length(); i < var15; ++i) {
+               removeIndexBool = false;
+               Object var25 = tempImages.get(i);
+               if (var25 == null) {
+                  throw new TypeCastException("null cannot be cast to non-null type org.json.JSONObject");
+               }
+
+               tempIncomingImg = (JSONObject)var25;
+               String var26 = tempIncomingImg.getString("id");
+               Intrinsics.checkExpressionValueIsNotNull(var26, "tempIncomingImg.getString(\"id\")");
+               imgID = var26;
+               int incomX = tempIncomingImg.getInt("x");
+               int incomY = tempIncomingImg.getInt("y");
+               int j = 0;
+
+               for(int var17 = this.images.length(); j < var17; ++j) {
+                  var25 = this.images.get(j);
+                  if (var25 == null) {
+                     throw new TypeCastException("null cannot be cast to non-null type org.json.JSONObject");
+                  }
+
+                  tempExistingImg = (JSONObject)var25;
+                  if (Intrinsics.areEqual(tempExistingImg.getString("id"), imgID)) {
+                     removeIndex = j;
+                     removeIndexBool = true;
+                     this.exploredMap[tempExistingImg.getInt("x")][tempExistingImg.getInt("y")] = "O";
+                  }
+
+                  if (tempExistingImg.getInt("x") == incomX && tempExistingImg.getInt("y") == incomY) {
+                     tempIncomingImg.put("x", this.tempX);
+                     tempIncomingImg.put("y", this.tempY);
+                     int var10001 = this.tempX++;
+                  }
+               }
+
+               if (removeIndexBool) {
+                  this.images.remove(removeIndex);
+               }
+
+               this.images.put(tempIncomingImg);
+            }
+         } catch (JSONException var19) {
+            Log.d("Parser", "JSON EXCEPTION in process image");
+            this.validPayload = false;
+         } catch (IndexOutOfBoundsException var20) {
+            Log.d("Parser", "Process Image INDEX OUT OF BOUNDS EXCEPTION");
+            this.validPayload = false;
+         } catch (ClassCastException var21) {
+            Log.d("Parser", "CLASS CAST EXCEPTION");
+            this.validPayload = false;
+         }
+      }
+
+   }
+
+   private final void setMDF() {
+      mdfPayload = this.currentPayload;
+      JSONObject var10000 = this.payload;
+      if (var10000 != null) {
+         JSONObject var1 = var10000;
+         boolean var2 = false;
+         boolean var3 = false;
+         JSONObject it = var1;
+         boolean var5 = false;
+
+         try {
+            JSONObject map = new JSONObject(it.getString("map"));
+            Log.e("Parser", "map: " + map);
+            String exploredMDF = map.getString("explored");
+            String obstacleMDF = map.getString("obstacle");
+            Log.e("Parser", "Explored: " + exploredMDF);
+            Log.e("Parser", "Obstacle: " + obstacleMDF);
+            Intrinsics.checkExpressionValueIsNotNull(exploredMDF, "exploredMDF");
+            hexMDF = exploredMDF;
+            exploredMDF = (new BigInteger(exploredMDF, 16)).toString(2);
+            Intrinsics.checkExpressionValueIsNotNull(exploredMDF, "exploredMDF");
+            byte var10 = 2;
+            short var11 = 302;
+            boolean var12 = false;
+            if (exploredMDF == null) {
+               throw new TypeCastException("null cannot be cast to non-null type java.lang.String");
+            }
+
+            String var44 = exploredMDF.substring(var10, var11);
+            Intrinsics.checkExpressionValueIsNotNull(var44, "(this as java.lang.Strin…ing(startIndex, endIndex)");
+            exploredMDF = var44;
+            if (DEBUG) {
+               Log.d("MDF", "Explored MDF: " + exploredMDF);
+            }
+
+            int exploredLength = StringsKt.replace$default(exploredMDF, "0", "", false, 4, (Object)null).length();
+            int obstaclePad = exploredLength % 4;
+            if (DEBUG) {
+               Log.d("MDF", "Obstacle Padding: " + obstaclePad);
+            }
+
+            Intrinsics.checkExpressionValueIsNotNull(obstacleMDF, "obstacleMDF");
+            hexExplored = obstacleMDF;
+            obstacleMDF = (new BigInteger(obstacleMDF, 16)).toString(2);
+            int obstacleMdfHexToBinLen = hexExplored.length() * 4;
+            StringCompanionObject var34 = StringCompanionObject.INSTANCE;
+            String var13 = "" + '%' + obstacleMdfHexToBinLen + 's';
+            Object[] var14 = new Object[]{obstacleMDF};
+            boolean var15 = false;
+            var44 = String.format(var13, Arrays.copyOf(var14, var14.length));
+            Intrinsics.checkExpressionValueIsNotNull(var44, "java.lang.String.format(format, *args)");
+            obstacleMDF = StringsKt.replace$default(var44, " ", "0", false, 4, (Object)null);
+            if (DEBUG) {
+               Log.d("MDF", "Obstacle MDF: " + obstacleMDF);
+            }
+
+            byte var35 = 15;
+            String[][] var37 = new String[var35][];
+
+            int j;
+            for(j = 0; j < var35; ++j) {
+               int var19 = false;
+               byte var20 = 20;
+               String[] var21 = new String[var20];
+
+               for(int var22 = 0; var22 < var20; ++var22) {
+                  int var26 = false;
+                  String var27 = "";
+                  var21[var22] = var27;
+               }
+
+               var37[j] = var21;
+            }
+
+            this.exploredMap = (String[][])var37;
+            Log.d("MDF", "Parsing Explored String on map");
+            int counter = 0;
+
+            for(byte var38 = 20; counter < var38; ++counter) {
+               j = 0;
+
+               for(byte var41 = 15; j < var41; ++j) {
+                  int characterIndex = counter * 15 + j;
+                  this.exploredMap[j][counter] = String.valueOf(exploredMDF.charAt(characterIndex));
+               }
+            }
+
+            if (DEBUG) {
+               this.printMapDbg();
+            }
+
+            Log.d("MDF", "Parsing Obstacle String on map");
+            counter = 0;
+            int i = 0;
+
+            for(byte var42 = 20; i < var42; ++i) {
+               int j = 0;
+
+               for(byte var46 = 15; j < var46; ++j) {
+                  if (Intrinsics.areEqual(this.exploredMap[j][i], "1")) {
+                     if (obstacleMDF.charAt(counter) == '1') {
+                        this.exploredMap[j][i] = "O";
+                     }
+
+                     ++counter;
+                  }
+               }
+            }
+
+            if (DEBUG) {
+               this.printMapDbg();
+            }
+         } catch (JSONException var29) {
+            Log.e("Parser", "JSON EXCEPTION in Set MDF");
+            this.validPayload = false;
+         } catch (IndexOutOfBoundsException var30) {
+            Log.e("Parser", "Set MDF INDEX OUT OF BOUNDS EXCEPTION");
+            this.validPayload = false;
+         } catch (ClassCastException var31) {
+            Log.e("Parser", "CLASS CAST EXCEPTION");
+            this.validPayload = false;
+         }
+      }
+
+   }
+
+   private final void printMapDbg() {
+      Log.d("MDF-Map", "=========================================");
+      int i = 0;
+
+      for(byte var2 = 20; i < var2; ++i) {
+         String s = "";
+         int j = 0;
+
+         for(byte var5 = 15; j < var5; ++j) {
+            s = s + this.exploredMap[j][i];
+         }
+
+         Log.d("MDF-Map", s);
+      }
+
+      Log.d("MDF-Map", "=========================================");
+   }
+
+   public Parser() {
+      byte var1 = 15;
+      String[][] var2 = new String[var1][];
+
+      for(int var3 = 0; var3 < var1; ++var3) {
+         int var5 = false;
+         byte var6 = 20;
+         String[] var7 = new String[var6];
+
+         for(int var8 = 0; var8 < var6; ++var8) {
+            int var12 = false;
+            String var13 = "";
+            var7[var8] = var13;
+         }
+
+         var2[var3] = var7;
+      }
+
+      this.exploredMap = (String[][])var2;
+      this.validPayload = true;
+   }
+
+   static {
+      DEBUG = BuildConfig.DEBUG;
+      hexImage = "";
+      hexMDF = "0x0000000000000000";
+      hexExplored = "0x0000000000000000";
+      mdfPayload = "";
+   }
+
+   
+   public static final class Companion {
+      public final boolean getDEBUG() {
+         return Parser.DEBUG;
+      }
+
+      @NotNull
+      public final String getHexImage() {
+         return Parser.hexImage;
+      }
+
+      public final void setHexImage(@NotNull String var1) {
+         Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+         Parser.hexImage = var1;
+      }
+
+      @NotNull
+      public final String getHexMDF() {
+         return Parser.hexMDF;
+      }
+
+      public final void setHexMDF(@NotNull String var1) {
+         Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+         Parser.hexMDF = var1;
+      }
+
+      @NotNull
+      public final String getHexExplored() {
+         return Parser.hexExplored;
+      }
+
+      public final void setHexExplored(@NotNull String var1) {
+         Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+         Parser.hexExplored = var1;
+      }
+
+      @NotNull
+      public final String getMdfPayload() {
+         return Parser.mdfPayload;
+      }
+
+      public final void setMdfPayload(@NotNull String var1) {
+         Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+         Parser.mdfPayload = var1;
+      }
+
+      private Companion() {
+      }
+
+      // $FF: synthetic method
+      public Companion(DefaultConstructorMarker $constructor_marker) {
+         this();
+      }
+   }
+}

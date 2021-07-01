@@ -1,0 +1,1590 @@
+package com.example.mdp_group15_2021s2.util;
+
+import android.content.Context;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.Paint.Style;
+import android.util.AttributeSet;
+import android.util.Log;
+import android.view.View;
+import java.util.HashMap;
+import kotlin.Metadata;
+import kotlin.TypeCastException;
+import kotlin.jvm.JvmStatic;
+import kotlin.jvm.internal.DefaultConstructorMarker;
+import kotlin.jvm.internal.Intrinsics;
+import kotlin.text.StringsKt;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+public final class MapDrawer extends View {
+   private Paint gridPaint;
+   private Paint gridPaintBorder;
+   private Paint gridPaintCoords;
+   private Paint robotPaint;
+   private Paint directionPaint;
+   private Paint exploredPaint;
+   private Paint exploredPaintBorder;
+   private Paint wayPointPaint;
+   private Paint wayPointPaintBorder;
+   private Paint startPointPaint;
+   private Paint startPointPaintBorder;
+   private Paint endPointPaint;
+   private Paint endPointPaintBorder;
+   private Paint selectionPaint;
+   private Paint selectionPaintBorder;
+   private Paint selectionTextPaint;
+   private Paint obstaclePaint;
+   private Paint obstaclePaintBorder;
+   private Paint obstacleTextPaint;
+   public static final int GRID_DIMEN_TABLET = 36;
+   public static final int GRID_DIMEN_PHABLET = 50;
+   private static final String TAG = "Grid";
+   private static int gridDimensions = 36;
+   private static int Robot_X = 1;
+   private static int Robot_Y = 18;
+   private static int Start_Point_X = 1;
+   private static int Start_Point_Y = 18;
+   private static int Way_Point_X = 13;
+   private static int Way_Point_Y = 1;
+   public static final int End_Point_X = 13;
+   public static final int End_Point_Y = 1;
+   @NotNull
+   private static String direction = "Up";
+   private static boolean selectStartPoint;
+   private static boolean selectWayPoint;
+   private static String[][] exploredPath;
+   public static final MapDrawer.Companion Companion = new MapDrawer.Companion((DefaultConstructorMarker)null);
+   private HashMap _$_findViewCache;
+
+   private final void init() {
+      this.gridPaint = new Paint(1);
+      this.gridPaintBorder = new Paint(1);
+      this.gridPaintCoords = new Paint(1);
+      this.robotPaint = new Paint(1);
+      this.directionPaint = new Paint(1);
+      this.exploredPaint = new Paint(1);
+      this.exploredPaintBorder = new Paint(1);
+      this.wayPointPaint = new Paint(1);
+      this.wayPointPaintBorder = new Paint(1);
+      this.startPointPaint = new Paint(1);
+      this.startPointPaintBorder = new Paint(1);
+      this.endPointPaint = new Paint(1);
+      this.endPointPaintBorder = new Paint(1);
+      this.selectionPaint = new Paint(1);
+      this.selectionPaintBorder = new Paint(1);
+      this.selectionTextPaint = new Paint(1);
+      this.obstaclePaint = new Paint(1);
+      this.obstaclePaintBorder = new Paint(1);
+      this.obstacleTextPaint = new Paint(1);
+      Paint var10000 = this.gridPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.gridPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#0cadad"));
+      var10000 = this.gridPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.gridPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#eeeeee"));
+      var10000 = this.gridPaintCoords;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaintCoords");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.gridPaintCoords;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaintCoords");
+      }
+
+      var10000.setColor(Color.parseColor("#000000"));
+      var10000 = this.gridPaintCoords;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("gridPaintCoords");
+      }
+
+      var10000.setTextSize(15.0F);
+      var10000 = this.robotPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("robotPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.robotPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("robotPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#ffe64b"));
+      var10000 = this.directionPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("directionPaint");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.directionPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("directionPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#424242"));
+      var10000 = this.exploredPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("exploredPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.exploredPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("exploredPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#e1dcda"));
+      var10000 = this.exploredPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("exploredPaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.exploredPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("exploredPaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#3A96C2"));
+      var10000 = this.wayPointPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("wayPointPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.wayPointPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("wayPointPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#e53935"));
+      var10000 = this.wayPointPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("wayPointPaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.wayPointPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("wayPointPaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#f5f5f5"));
+      var10000 = this.startPointPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.startPointPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#607d8b"));
+      var10000 = this.startPointPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.startPointPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#f5f5f5"));
+      var10000 = this.endPointPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.endPointPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#0cadad"));
+      var10000 = this.endPointPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.endPointPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#f5f5f5"));
+      var10000 = this.selectionPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionPaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.selectionPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#9ccc65"));
+      var10000 = this.selectionPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionPaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.selectionPaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionPaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#f5f5f5"));
+      var10000 = this.selectionTextPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionTextPaint");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.selectionTextPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionTextPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#f5f5f5"));
+      var10000 = this.selectionTextPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionTextPaint");
+      }
+
+      var10000.setTextSize(100.0F);
+      var10000 = this.obstaclePaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstaclePaint");
+      }
+
+      var10000.setStyle(Style.FILL);
+      var10000 = this.obstaclePaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstaclePaint");
+      }
+
+      var10000.setColor(Color.parseColor("#212121"));
+      var10000 = this.obstaclePaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstaclePaintBorder");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.obstaclePaintBorder;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstaclePaintBorder");
+      }
+
+      var10000.setColor(Color.parseColor("#f5f5f5"));
+      var10000 = this.obstacleTextPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstacleTextPaint");
+      }
+
+      var10000.setStyle(Style.STROKE);
+      var10000 = this.obstacleTextPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstacleTextPaint");
+      }
+
+      var10000.setColor(Color.parseColor("#ffffff"));
+      var10000 = this.obstacleTextPaint;
+      if (var10000 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstacleTextPaint");
+      }
+
+      var10000.setTextSize(30.0F);
+      if (this.getTag() != null) {
+         String var1;
+         if (this.getTag() != null) {
+            Object var10001 = this.getTag();
+            if (var10001 == null) {
+               throw new TypeCastException("null cannot be cast to non-null type kotlin.String");
+            }
+
+            var1 = (String)var10001;
+         } else {
+            var1 = "Default";
+         }
+
+         Log.d("Tag", var1);
+         Object var2 = this.getTag();
+         if (var2 == null) {
+            throw new TypeCastException("null cannot be cast to non-null type kotlin.String");
+         }
+
+         gridDimensions = StringsKt.equals((String)var2, "phone", true) ? 50 : 36;
+      }
+
+   }
+
+   protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+      super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+      this.setMeasuredDimension(widthMeasureSpec, heightMeasureSpec);
+   }
+
+   protected void onDraw(@NotNull Canvas canvas) {
+      Intrinsics.checkParameterIsNotNull(canvas, "canvas");
+      super.onDraw(canvas);
+      Log.d("Grid", "DRAWING GRID MAP");
+      this.drawMap(canvas);
+      if (!selectWayPoint && !selectStartPoint) {
+         this.drawExploredMap(canvas);
+         this.drawStartPoint(canvas);
+         this.drawEndPoint(canvas);
+         this.drawWayPoint(canvas);
+         this.drawRobot(canvas);
+      } else {
+         this.drawStartPoint(canvas);
+         this.drawEndPoint(canvas);
+         this.drawSelectionMap(canvas);
+         if (selectWayPoint) {
+            this.drawWayPoint(canvas);
+         } else if (selectStartPoint) {
+            this.drawRobot(canvas);
+         }
+      }
+
+   }
+
+   private final void drawMap(Canvas canvas) {
+      int i = 0;
+
+      for(byte var3 = 15; i < var3; ++i) {
+         int j = 0;
+
+         for(byte var5 = 20; j < var5; ++j) {
+            int left = i * gridDimensions;
+            int top = j * gridDimensions;
+            Rect rectangle = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+            Paint var10002 = this.gridPaint;
+            if (var10002 == null) {
+               Intrinsics.throwUninitializedPropertyAccessException("gridPaint");
+            }
+
+            canvas.drawRect(rectangle, var10002);
+            var10002 = this.gridPaintBorder;
+            if (var10002 == null) {
+               Intrinsics.throwUninitializedPropertyAccessException("gridPaintBorder");
+            }
+
+            canvas.drawRect(rectangle, var10002);
+         }
+      }
+
+   }
+
+   private final void drawExploredMap(Canvas canvas) {
+      int i = 0;
+
+      for(byte var3 = 15; i < var3; ++i) {
+         int j = 0;
+
+         for(byte var5 = 20; j < var5; ++j) {
+            int left = i * gridDimensions;
+            int top = j * gridDimensions;
+            if (Intrinsics.areEqual(exploredPath[i][j], "1")) {
+               Rect rectangle = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+               Paint var10002 = this.exploredPaint;
+               if (var10002 == null) {
+                  Intrinsics.throwUninitializedPropertyAccessException("exploredPaint");
+               }
+
+               canvas.drawRect(rectangle, var10002);
+               var10002 = this.exploredPaintBorder;
+               if (var10002 == null) {
+                  Intrinsics.throwUninitializedPropertyAccessException("exploredPaintBorder");
+               }
+
+               canvas.drawRect(rectangle, var10002);
+            } else if (Intrinsics.areEqual(exploredPath[i][j], "0") ^ true) {
+               Log.d("Grid", exploredPath[i][j]);
+               this.drawObstacles(canvas, left, top, left + gridDimensions, top + gridDimensions, exploredPath[i][j]);
+            }
+         }
+      }
+
+   }
+
+   private final void drawRobot(Canvas canvas) {
+      float gridX = (float)(Robot_X * gridDimensions + (Robot_X + 1) * gridDimensions) / 2.0F;
+      float gridY = (float)(Robot_Y * gridDimensions + (Robot_Y + 1) * gridDimensions) / 2.0F;
+      float var10003 = (float)(gridDimensions * 3) / 2.0F;
+      Paint var10004 = this.robotPaint;
+      if (var10004 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("robotPaint");
+      }
+
+      canvas.drawCircle(gridX, gridY, var10003, var10004);
+      String var4 = direction;
+      float var5;
+      Paint var10005;
+      switch(var4.hashCode()) {
+      case 2747:
+         if (var4.equals("Up")) {
+            var5 = ((float)Robot_Y - 1.0F) * (float)gridDimensions;
+            var10005 = this.directionPaint;
+            if (var10005 == null) {
+               Intrinsics.throwUninitializedPropertyAccessException("directionPaint");
+            }
+
+            canvas.drawLine(gridX, gridY, gridX, var5, var10005);
+         }
+         break;
+      case 2136258:
+         if (var4.equals("Down")) {
+            var5 = ((float)Robot_Y + 2.0F) * (float)gridDimensions;
+            var10005 = this.directionPaint;
+            if (var10005 == null) {
+               Intrinsics.throwUninitializedPropertyAccessException("directionPaint");
+            }
+
+            canvas.drawLine(gridX, gridY, gridX, var5, var10005);
+         }
+         break;
+      case 2364455:
+         if (var4.equals("Left")) {
+            var10003 = ((float)Robot_X - 1.0F) * (float)gridDimensions;
+            var10005 = this.directionPaint;
+            if (var10005 == null) {
+               Intrinsics.throwUninitializedPropertyAccessException("directionPaint");
+            }
+
+            canvas.drawLine(gridX, gridY, var10003, gridY, var10005);
+         }
+         break;
+      case 78959100:
+         if (var4.equals("Right")) {
+            var10003 = ((float)Robot_X + 2.0F) * (float)gridDimensions;
+            var10005 = this.directionPaint;
+            if (var10005 == null) {
+               Intrinsics.throwUninitializedPropertyAccessException("directionPaint");
+            }
+
+            canvas.drawLine(gridX, gridY, var10003, gridY, var10005);
+         }
+      }
+
+   }
+
+   private final void drawStartPoint(Canvas canvas) {
+      int left = Start_Point_X * gridDimensions;
+      int top = Start_Point_Y * gridDimensions;
+      Rect rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      Paint var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = (Start_Point_X + 1) * gridDimensions;
+      top = Start_Point_Y * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = (Start_Point_X - 1) * gridDimensions;
+      top = Start_Point_Y * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = Start_Point_X * gridDimensions;
+      top = (Start_Point_Y + 1) * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = Start_Point_X * gridDimensions;
+      top = (Start_Point_Y - 1) * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = (Start_Point_X - 1) * gridDimensions;
+      top = (Start_Point_Y + 1) * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = (Start_Point_X - 1) * gridDimensions;
+      top = (Start_Point_Y - 1) * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = (Start_Point_X + 1) * gridDimensions;
+      top = (Start_Point_Y + 1) * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = (Start_Point_X + 1) * gridDimensions;
+      top = (Start_Point_Y - 1) * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.startPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.startPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("startPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+   }
+
+   private final void drawEndPoint(Canvas canvas) {
+      int left = 13 * gridDimensions;
+      int top = 1 * gridDimensions;
+      Rect rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      Paint var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 14 * gridDimensions;
+      top = 1 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 12 * gridDimensions;
+      top = 1 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 13 * gridDimensions;
+      top = 2 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 13 * gridDimensions;
+      top = 0 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 12 * gridDimensions;
+      top = 2 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 12 * gridDimensions;
+      top = 0 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 14 * gridDimensions;
+      top = 2 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+      left = 14 * gridDimensions;
+      top = 0 * gridDimensions;
+      rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      var10002 = this.endPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.endPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("endPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+   }
+
+   private final void drawWayPoint(Canvas canvas) {
+      int left = Way_Point_X * gridDimensions;
+      int top = Way_Point_Y * gridDimensions;
+      Rect rect = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      Paint var10002 = this.wayPointPaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("wayPointPaint");
+      }
+
+      canvas.drawRect(rect, var10002);
+      var10002 = this.wayPointPaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("wayPointPaintBorder");
+      }
+
+      canvas.drawRect(rect, var10002);
+   }
+
+   private final void drawSelectionMap(Canvas canvas) {
+      int i = 0;
+
+      Paint var10004;
+      for(byte var3 = 14; i < var3; ++i) {
+         int j = 0;
+
+         for(byte var5 = 19; j < var5; ++j) {
+            int left = i * gridDimensions;
+            int top = j * gridDimensions;
+            if (Companion.isSurroundingObstacle(i, j)) {
+               Rect rectangle = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+               Paint var10002 = this.selectionPaint;
+               if (var10002 == null) {
+                  Intrinsics.throwUninitializedPropertyAccessException("selectionPaint");
+               }
+
+               canvas.drawRect(rectangle, var10002);
+               var10002 = this.selectionPaintBorder;
+               if (var10002 == null) {
+                  Intrinsics.throwUninitializedPropertyAccessException("selectionPaintBorder");
+               }
+
+               canvas.drawRect(rectangle, var10002);
+               String var10001 = "" + '{' + i + ',' + (19 - j) + ')';
+               float var11 = (float)left;
+               float var10003 = (float)(top + gridDimensions) - 10.0F;
+               var10004 = this.gridPaintCoords;
+               if (var10004 == null) {
+                  Intrinsics.throwUninitializedPropertyAccessException("gridPaintCoords");
+               }
+
+               canvas.drawText(var10001, var11, var10003, var10004);
+            }
+         }
+      }
+
+      float left = 3.0F * (float)gridDimensions;
+      float top = 9.0F * (float)gridDimensions;
+      if (selectWayPoint) {
+         var10004 = this.selectionTextPaint;
+         if (var10004 == null) {
+            Intrinsics.throwUninitializedPropertyAccessException("selectionTextPaint");
+         }
+
+         canvas.drawText("WAY", left, top, var10004);
+      } else if (selectStartPoint) {
+         var10004 = this.selectionTextPaint;
+         if (var10004 == null) {
+            Intrinsics.throwUninitializedPropertyAccessException("selectionTextPaint");
+         }
+
+         canvas.drawText("START", left, top, var10004);
+      }
+
+      top = 12.0F * (float)gridDimensions;
+      var10004 = this.selectionTextPaint;
+      if (var10004 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("selectionTextPaint");
+      }
+
+      canvas.drawText("POINT", left, top, var10004);
+   }
+
+   private final void drawObstacles(Canvas canvas, int left, int top, int right, int bottom, String obstacle) {
+      Rect rectangle = new Rect(left, top, left + gridDimensions, top + gridDimensions);
+      int ttop = top + 25;
+      int tleft = left + 6;
+      Paint var10002 = this.obstaclePaint;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstaclePaint");
+      }
+
+      canvas.drawRect(rectangle, var10002);
+      var10002 = this.obstaclePaintBorder;
+      if (var10002 == null) {
+         Intrinsics.throwUninitializedPropertyAccessException("obstaclePaintBorder");
+      }
+
+      canvas.drawRect(rectangle, var10002);
+      Context var10001;
+      switch(obstacle.hashCode()) {
+      case 1537:
+         if (obstacle.equals("01")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800013), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1538:
+         if (obstacle.equals("02")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800011), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1539:
+         if (obstacle.equals("03")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800012), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1540:
+         if (obstacle.equals("04")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800004), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1541:
+         if (obstacle.equals("05")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800007), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1542:
+         if (obstacle.equals("06")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800001), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1543:
+         if (obstacle.equals("07")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800003), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1544:
+         if (obstacle.equals("08")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800009), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1545:
+         if (obstacle.equals("09")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800010), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1567:
+         if (obstacle.equals("10")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800008), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1568:
+         if (obstacle.equals("11")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800002), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1569:
+         if (obstacle.equals("12")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800000), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1570:
+         if (obstacle.equals("13")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800006), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1571:
+         if (obstacle.equals("14")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800005), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+         break;
+      case 1572:
+         if (obstacle.equals("15")) {
+            var10001 = this.getContext();
+            Intrinsics.checkExpressionValueIsNotNull(var10001, "context");
+            canvas.drawBitmap(BitmapFactory.decodeResource(var10001.getResources(), 1800014), (Rect)null, new Rect(left, top, right, bottom), (Paint)null);
+         }
+      }
+
+   }
+
+   public MapDrawer(@NotNull Context context, @Nullable AttributeSet attrs) {
+      Intrinsics.checkParameterIsNotNull(context, "context");
+      super(context, attrs);
+      Robot_X = 1;
+      Robot_Y = 18;
+      direction = "Up";
+      byte var3 = 15;
+      String[][] var4 = new String[var3][];
+
+      for(int var5 = 0; var5 < var3; ++var5) {
+         int var7 = false;
+         byte var8 = 20;
+         String[] var9 = new String[var8];
+
+         for(int var10 = 0; var10 < var8; ++var10) {
+            int var14 = false;
+            String var15 = "0";
+            var9[var10] = var15;
+         }
+
+         var4[var5] = var9;
+      }
+
+      exploredPath = (String[][])var4;
+      this.init();
+      Companion.initMap();
+   }
+
+   // $FF: synthetic method
+   public MapDrawer(Context var1, AttributeSet var2, int var3, DefaultConstructorMarker var4) {
+      if ((var3 & 2) != 0) {
+         var2 = (AttributeSet)null;
+      }
+
+      this(var1, var2);
+   }
+
+   static {
+      byte var0 = 15;
+      String[][] var1 = new String[var0][];
+
+      for(int var2 = 0; var2 < var0; ++var2) {
+         int var4 = false;
+         byte var5 = 20;
+         String[] var6 = new String[var5];
+
+         for(int var7 = 0; var7 < var5; ++var7) {
+            int var11 = false;
+            String var12 = "0";
+            var6[var7] = var12;
+         }
+
+         var1[var2] = var6;
+      }
+
+      exploredPath = (String[][])var1;
+   }
+
+   // $FF: synthetic method
+   public static final void access$setExploredPath$cp(String[][] var0) {
+      exploredPath = var0;
+   }
+
+   public View _$_findCachedViewById(int var1) {
+      if (this._$_findViewCache == null) {
+         this._$_findViewCache = new HashMap();
+      }
+
+      View var2 = (View)this._$_findViewCache.get(var1);
+      if (var2 == null) {
+         var2 = this.findViewById(var1);
+         this._$_findViewCache.put(var1, var2);
+      }
+
+      return var2;
+   }
+
+   public void _$_clearFindViewByIdCache() {
+      if (this._$_findViewCache != null) {
+         this._$_findViewCache.clear();
+      }
+
+   }
+
+   @JvmStatic
+   private static final void initMap() {
+      Companion.initMap();
+   }
+
+   @JvmStatic
+   public static final void moveRight() {
+      Companion.moveRight();
+   }
+
+   @JvmStatic
+   public static final void moveLeft() {
+      Companion.moveLeft();
+   }
+
+   @JvmStatic
+   public static final void moveUp() {
+      Companion.moveUp();
+   }
+
+   @JvmStatic
+   public static final void updateCoordinates(int x_axis, int y_axis, @NotNull String dir) {
+      Companion.updateCoordinates(x_axis, y_axis, dir);
+   }
+
+   @JvmStatic
+   public static final void updateSelection(int x_axis, int y_axis) {
+      Companion.updateSelection(x_axis, y_axis);
+   }
+
+   @JvmStatic
+   private static final void updateExplored() {
+      Companion.updateExplored();
+   }
+
+   @JvmStatic
+   public static final boolean validMidpoint(int x_axis, int y_axis) {
+      return Companion.validMidpoint(x_axis, y_axis);
+   }
+
+   @JvmStatic
+   public static final void setGrid(@NotNull String[][] exploredMap) {
+      Companion.setGrid(exploredMap);
+   }
+
+   @JvmStatic
+   public static final int invertYAxis(int y_axis) {
+      return Companion.invertYAxis(y_axis);
+   }
+
+   @JvmStatic
+   public static final void setSelectWayPoint() {
+      Companion.setSelectWayPoint();
+   }
+
+   @JvmStatic
+   public static final void setSelectStartPoint() {
+      Companion.setSelectStartPoint();
+   }
+
+   @JvmStatic
+   public static final void updateStartPoint() {
+      Companion.updateStartPoint();
+   }
+
+   @JvmStatic
+   @NotNull
+   public static final String getRobotPosition() {
+      return Companion.getRobotPosition();
+   }
+
+   @JvmStatic
+   @NotNull
+   public static final String getWayPoint() {
+      return Companion.getWayPoint();
+   }
+
+   @JvmStatic
+   public static final int getWayPointYInvert() {
+      return Companion.getWayPointYInvert();
+   }
+
+   @JvmStatic
+   @NotNull
+   public static final String getStartPoint() {
+      return Companion.getStartPoint();
+   }
+
+   @JvmStatic
+   public static final int getStartPointYInvert() {
+      return Companion.getStartPointYInvert();
+   }
+
+   @JvmStatic
+   public static final int getRobotInvertY() {
+      return Companion.getRobotInvertY();
+   }
+
+   @JvmStatic
+   public static final void resetMap() {
+      Companion.resetMap();
+   }
+
+   @JvmStatic
+   public static final int getRotationDir() {
+      return Companion.getRotationDir();
+   }
+
+   @JvmStatic
+   public static final boolean isSurroundingObstacle(int x_axis, int y_axis) {
+      return Companion.isSurroundingObstacle(x_axis, y_axis);
+   }
+   public static final class Companion {
+      public final int getGridDimensions() {
+         return MapDrawer.gridDimensions;
+      }
+
+      public final void setGridDimensions(int var1) {
+         MapDrawer.gridDimensions = var1;
+      }
+
+      public final int getRobot_X() {
+         return MapDrawer.Robot_X;
+      }
+
+      public final void setRobot_X(int var1) {
+         MapDrawer.Robot_X = var1;
+      }
+
+      public final int getRobot_Y() {
+         return MapDrawer.Robot_Y;
+      }
+
+      public final void setRobot_Y(int var1) {
+         MapDrawer.Robot_Y = var1;
+      }
+
+      public final int getStart_Point_X() {
+         return MapDrawer.Start_Point_X;
+      }
+
+      public final void setStart_Point_X(int var1) {
+         MapDrawer.Start_Point_X = var1;
+      }
+
+      public final int getStart_Point_Y() {
+         return MapDrawer.Start_Point_Y;
+      }
+
+      public final void setStart_Point_Y(int var1) {
+         MapDrawer.Start_Point_Y = var1;
+      }
+
+      public final int getWay_Point_X() {
+         return MapDrawer.Way_Point_X;
+      }
+
+      public final void setWay_Point_X(int var1) {
+         MapDrawer.Way_Point_X = var1;
+      }
+
+      public final int getWay_Point_Y() {
+         return MapDrawer.Way_Point_Y;
+      }
+
+      public final void setWay_Point_Y(int var1) {
+         MapDrawer.Way_Point_Y = var1;
+      }
+
+      @NotNull
+      public final String getDirection() {
+         return MapDrawer.direction;
+      }
+
+      public final void setDirection(@NotNull String var1) {
+         Intrinsics.checkParameterIsNotNull(var1, "<set-?>");
+         MapDrawer.direction = var1;
+      }
+
+      public final boolean getSelectStartPoint() {
+         return MapDrawer.selectStartPoint;
+      }
+
+      public final void setSelectStartPoint(boolean var1) {
+         MapDrawer.selectStartPoint = var1;
+      }
+
+      public final boolean getSelectWayPoint() {
+         return MapDrawer.selectWayPoint;
+      }
+
+      public final void setSelectWayPoint(boolean var1) {
+         MapDrawer.selectWayPoint = var1;
+      }
+
+      @JvmStatic
+      private final void initMap() {
+         int i = 0;
+
+         for(byte var2 = 15; i < var2; ++i) {
+            int j = 0;
+
+            for(byte var4 = 20; j < var4; ++j) {
+               MapDrawer.exploredPath[i][j] = "0";
+            }
+         }
+
+         ((MapDrawer.Companion)this).setRobot_X(1);
+         ((MapDrawer.Companion)this).setRobot_Y(18);
+         ((MapDrawer.Companion)this).setDirection("Up");
+         ((MapDrawer.Companion)this).updateExplored();
+      }
+
+      @JvmStatic
+      public final void moveRight() {
+         MapDrawer.Companion var10000;
+         String var10001;
+         label27: {
+            var10000 = (MapDrawer.Companion)this;
+            String var1 = ((MapDrawer.Companion)this).getDirection();
+            switch(var1.hashCode()) {
+            case 2747:
+               if (var1.equals("Up")) {
+                  var10001 = "Right";
+                  break label27;
+               }
+               break;
+            case 2136258:
+               if (var1.equals("Down")) {
+                  var10001 = "Left";
+                  break label27;
+               }
+               break;
+            case 2364455:
+               if (var1.equals("Left")) {
+                  var10001 = "Up";
+                  break label27;
+               }
+               break;
+            case 78959100:
+               if (var1.equals("Right")) {
+                  var10001 = "Down";
+                  break label27;
+               }
+            }
+
+            var10001 = "Up";
+         }
+
+         var10000.setDirection(var10001);
+      }
+
+      @JvmStatic
+      public final void moveLeft() {
+         MapDrawer.Companion var10000;
+         String var10001;
+         label27: {
+            var10000 = (MapDrawer.Companion)this;
+            String var1 = ((MapDrawer.Companion)this).getDirection();
+            switch(var1.hashCode()) {
+            case 2747:
+               if (var1.equals("Up")) {
+                  var10001 = "Left";
+                  break label27;
+               }
+               break;
+            case 2136258:
+               if (var1.equals("Down")) {
+                  var10001 = "Right";
+                  break label27;
+               }
+               break;
+            case 2364455:
+               if (var1.equals("Left")) {
+                  var10001 = "Down";
+                  break label27;
+               }
+               break;
+            case 78959100:
+               if (var1.equals("Right")) {
+                  var10001 = "Up";
+                  break label27;
+               }
+            }
+
+            var10001 = "Up";
+         }
+
+         var10000.setDirection(var10001);
+      }
+
+      @JvmStatic
+      public final void moveUp() {
+         if (Intrinsics.areEqual(((MapDrawer.Companion)this).getDirection(), "Right")) {
+            if (((MapDrawer.Companion)this).getRobot_X() + 1 != 14 && ((MapDrawer.Companion)this).isSurroundingObstacle(((MapDrawer.Companion)this).getRobot_X() + 1, ((MapDrawer.Companion)this).getRobot_Y())) {
+               ((MapDrawer.Companion)this).setRobot_X(((MapDrawer.Companion)this).getRobot_X() + 1);
+            }
+         } else if (Intrinsics.areEqual(((MapDrawer.Companion)this).getDirection(), "Left") && ((MapDrawer.Companion)this).isSurroundingObstacle(((MapDrawer.Companion)this).getRobot_X() - 1, ((MapDrawer.Companion)this).getRobot_Y())) {
+            Log.d("Grid", "L: " + (((MapDrawer.Companion)this).getRobot_X() - 1));
+            if (((MapDrawer.Companion)this).getRobot_X() - 1 != 0) {
+               ((MapDrawer.Companion)this).setRobot_X(((MapDrawer.Companion)this).getRobot_X() + -1);
+            }
+         } else if (Intrinsics.areEqual(((MapDrawer.Companion)this).getDirection(), "Up") && ((MapDrawer.Companion)this).isSurroundingObstacle(((MapDrawer.Companion)this).getRobot_X(), ((MapDrawer.Companion)this).getRobot_Y() - 1)) {
+            Log.d("Grid", "U: " + (((MapDrawer.Companion)this).getRobot_X() - 1));
+            if (((MapDrawer.Companion)this).getRobot_Y() - 1 != 0) {
+               ((MapDrawer.Companion)this).setRobot_Y(((MapDrawer.Companion)this).getRobot_Y() + -1);
+            }
+         } else if (Intrinsics.areEqual(((MapDrawer.Companion)this).getDirection(), "Down") && ((MapDrawer.Companion)this).isSurroundingObstacle(((MapDrawer.Companion)this).getRobot_X(), ((MapDrawer.Companion)this).getRobot_Y() + 1)) {
+            Log.d("Grid", "D: " + (((MapDrawer.Companion)this).getRobot_X() - 1));
+            if (((MapDrawer.Companion)this).getRobot_Y() + 1 != 19) {
+               ((MapDrawer.Companion)this).setRobot_Y(((MapDrawer.Companion)this).getRobot_Y() + 1);
+            }
+         }
+
+         ((MapDrawer.Companion)this).updateExplored();
+      }
+
+      @JvmStatic
+      public final void updateCoordinates(int x_axis, int y_axis, @NotNull String dir) {
+         Intrinsics.checkParameterIsNotNull(dir, "dir");
+         if (((MapDrawer.Companion)this).validMidpoint(x_axis, y_axis)) {
+            MapDrawer.Companion var10000;
+            String var10001;
+            label29: {
+               Log.d("Grid", "X Axis : " + x_axis + " Y Axis: " + y_axis);
+               int newYAxis = ((MapDrawer.Companion)this).invertYAxis(y_axis);
+               ((MapDrawer.Companion)this).setRobot_X(x_axis);
+               ((MapDrawer.Companion)this).setRobot_Y(newYAxis);
+               Log.d("Grid", ((MapDrawer.Companion)this).getRobot_X() + ", " + ((MapDrawer.Companion)this).getRobot_Y());
+               var10000 = (MapDrawer.Companion)this;
+               switch(dir.hashCode()) {
+               case 2715:
+                  if (dir.equals("UP")) {
+                     var10001 = "Up";
+                     break label29;
+                  }
+                  break;
+               case 2104482:
+                  if (dir.equals("DOWN")) {
+                     var10001 = "Down";
+                     break label29;
+                  }
+                  break;
+               case 2332679:
+                  if (dir.equals("LEFT")) {
+                     var10001 = "Left";
+                     break label29;
+                  }
+                  break;
+               case 77974012:
+                  if (dir.equals("RIGHT")) {
+                     var10001 = "Right";
+                     break label29;
+                  }
+               }
+
+               var10001 = "Right";
+            }
+
+            var10000.setDirection(var10001);
+            ((MapDrawer.Companion)this).updateExplored();
+         }
+      }
+
+      @JvmStatic
+      public final void updateSelection(int x_axis, int y_axis) {
+         if (((MapDrawer.Companion)this).isSurroundingObstacle(x_axis, y_axis)) {
+            if (((MapDrawer.Companion)this).getSelectStartPoint()) {
+               ((MapDrawer.Companion)this).setRobot_X(x_axis);
+               ((MapDrawer.Companion)this).setRobot_Y(y_axis);
+            } else if (((MapDrawer.Companion)this).getSelectWayPoint()) {
+               ((MapDrawer.Companion)this).setWay_Point_X(x_axis);
+               ((MapDrawer.Companion)this).setWay_Point_Y(y_axis);
+            }
+         }
+
+      }
+
+      @JvmStatic
+      private final void updateExplored() {
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X()][((MapDrawer.Companion)this).getRobot_Y()] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X() - 1][((MapDrawer.Companion)this).getRobot_Y()] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X() + 1][((MapDrawer.Companion)this).getRobot_Y()] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X()][((MapDrawer.Companion)this).getRobot_Y() + 1] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X()][((MapDrawer.Companion)this).getRobot_Y() - 1] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X() - 1][((MapDrawer.Companion)this).getRobot_Y() - 1] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X() - 1][((MapDrawer.Companion)this).getRobot_Y() + 1] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X() + 1][((MapDrawer.Companion)this).getRobot_Y() - 1] = "1";
+         MapDrawer.exploredPath[((MapDrawer.Companion)this).getRobot_X() + 1][((MapDrawer.Companion)this).getRobot_Y() + 1] = "1";
+      }
+
+      @JvmStatic
+      public final boolean validMidpoint(int x_axis, int y_axis) {
+         return x_axis >= 1 && x_axis < 14 && y_axis >= 1 && y_axis < 19;
+      }
+
+      @JvmStatic
+      public final void setGrid(@NotNull String[][] exploredMap) {
+         Intrinsics.checkParameterIsNotNull(exploredMap, "exploredMap");
+         int i = 0;
+
+         for(byte var3 = 20; i < var3; ++i) {
+            int j = 0;
+
+            for(byte var5 = 15; j < var5; ++j) {
+               MapDrawer.exploredPath[j][i] = exploredMap[j][((MapDrawer.Companion)this).invertYAxis(i)];
+            }
+         }
+
+      }
+
+      @JvmStatic
+      public final int invertYAxis(int y_axis) {
+         return 19 - y_axis;
+      }
+
+      @JvmStatic
+      public final void setSelectWayPoint() {
+         ((MapDrawer.Companion)this).setSelectWayPoint(!((MapDrawer.Companion)this).getSelectWayPoint());
+      }
+
+      @JvmStatic
+      public final void setSelectStartPoint() {
+         ((MapDrawer.Companion)this).setSelectStartPoint(!((MapDrawer.Companion)this).getSelectStartPoint());
+      }
+
+      @JvmStatic
+      public final void updateStartPoint() {
+         ((MapDrawer.Companion)this).updateExplored();
+      }
+
+      @JvmStatic
+      @NotNull
+      public final String getRobotPosition() {
+         return "" + ((MapDrawer.Companion)this).getRobot_X() + ',' + ((MapDrawer.Companion)this).invertYAxis(((MapDrawer.Companion)this).getRobot_Y());
+      }
+
+      @JvmStatic
+      @NotNull
+      public final String getWayPoint() {
+         return "" + ((MapDrawer.Companion)this).getWay_Point_X() + ',' + ((MapDrawer.Companion)this).invertYAxis(((MapDrawer.Companion)this).getWay_Point_Y());
+      }
+
+      @JvmStatic
+      public final int getWayPointYInvert() {
+         return ((MapDrawer.Companion)this).invertYAxis(((MapDrawer.Companion)this).getWay_Point_Y());
+      }
+
+      @JvmStatic
+      @NotNull
+      public final String getStartPoint() {
+         return "" + ((MapDrawer.Companion)this).getStart_Point_X() + ',' + ((MapDrawer.Companion)this).invertYAxis(((MapDrawer.Companion)this).getStart_Point_Y());
+      }
+
+      @JvmStatic
+      public final int getStartPointYInvert() {
+         return ((MapDrawer.Companion)this).invertYAxis(((MapDrawer.Companion)this).getStart_Point_Y());
+      }
+
+      @JvmStatic
+      public final int getRobotInvertY() {
+         return ((MapDrawer.Companion)this).invertYAxis(((MapDrawer.Companion)this).getRobot_Y());
+      }
+
+      @JvmStatic
+      public final void resetMap() {
+         ((MapDrawer.Companion)this).initMap();
+      }
+
+      @JvmStatic
+      public final int getRotationDir() {
+         String var1 = ((MapDrawer.Companion)this).getDirection();
+         short var10000;
+         switch(var1.hashCode()) {
+         case 2747:
+            if (var1.equals("Up")) {
+               var10000 = 0;
+               return var10000;
+            }
+            break;
+         case 2136258:
+            if (var1.equals("Down")) {
+               var10000 = 180;
+               return var10000;
+            }
+            break;
+         case 2364455:
+            if (var1.equals("Left")) {
+               var10000 = 270;
+               return var10000;
+            }
+            break;
+         case 78959100:
+            if (var1.equals("Right")) {
+               var10000 = 90;
+               return var10000;
+            }
+         }
+
+         var10000 = 90;
+         return var10000;
+      }
+
+      @JvmStatic
+      public final boolean isSurroundingObstacle(int x_axis, int y_axis) {
+         if (!((MapDrawer.Companion)this).validMidpoint(x_axis, y_axis)) {
+            return false;
+         } else {
+            return Intrinsics.areEqual(MapDrawer.exploredPath[x_axis][y_axis], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis][y_axis], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis][y_axis + 1], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis][y_axis + 1], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis][y_axis - 1], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis][y_axis - 1], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis + 1][y_axis], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis + 1][y_axis], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis + 1][y_axis + 1], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis + 1][y_axis + 1], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis + 1][y_axis - 1], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis + 1][y_axis - 1], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis - 1][y_axis], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis - 1][y_axis], "0") ^ true ? false : (Intrinsics.areEqual(MapDrawer.exploredPath[x_axis - 1][y_axis + 1], "1") ^ true && Intrinsics.areEqual(MapDrawer.exploredPath[x_axis - 1][y_axis + 1], "0") ^ true ? false : !(Intrinsics.areEqual(MapDrawer.exploredPath[x_axis - 1][y_axis - 1], "1") ^ true) || !(Intrinsics.areEqual(MapDrawer.exploredPath[x_axis - 1][y_axis - 1], "0") ^ true))))))));
+         }
+      }
+
+      private Companion() {
+      }
+
+      // $FF: synthetic method
+      public Companion(DefaultConstructorMarker $constructor_marker) {
+         this();
+      }
+   }
+}

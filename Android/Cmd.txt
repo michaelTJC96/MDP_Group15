@@ -1,0 +1,46 @@
+package com.example.mdp_group15_2021s2.util;
+
+import java.text.DecimalFormat;
+import kotlin.Metadata;
+import kotlin.jvm.JvmStatic;
+import org.jetbrains.annotations.NotNull;
+
+public final class Cmd {
+   private static final DecimalFormat coordinatesFormatter;
+   @NotNull
+   public static final String EXPLORATION_START = "PC,ES|";
+   @NotNull
+   public static final String FASTEST_PATH_START = "PC,FS|";
+   @NotNull
+   public static final String STOP = "PC,RS|";
+   @NotNull
+   public static final String SP = "PC,SP|";
+   @NotNull
+   public static final String DIRECTION_LEFT = "AR,l83";
+   @NotNull
+   public static final String DIRECTION_RIGHT = "AR,r83";
+   @NotNull
+   public static final String DIRECTION_UP = "AR,f01";
+   public static final Cmd INSTANCE;
+
+   @JvmStatic
+   @NotNull
+   public static final String getWayPoint(int x, int y) {
+      return "XWP" + coordinatesFormatter.format(x) + coordinatesFormatter.format(y);
+   }
+
+   @JvmStatic
+   @NotNull
+   public static final String getStartPoint(int x, int y) {
+      return "XWP" + coordinatesFormatter.format(x) + coordinatesFormatter.format(y);
+   }
+
+   private Cmd() {
+   }
+
+   static {
+      Cmd var0 = new Cmd();
+      INSTANCE = var0;
+      coordinatesFormatter = new DecimalFormat("00");
+   }
+}

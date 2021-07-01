@@ -1,0 +1,95 @@
+package com.example.mdp_group15_2021s2;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.TextView;
+import kotlin.Metadata;
+import kotlin.TypeCastException;
+import kotlin.collections.ArraysKt;
+import kotlin.jvm.internal.Intrinsics;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+
+public final class StringAdapter extends BaseAdapter {
+   private final LayoutInflater inflater;
+   private final String[] stringList;
+
+   public int getCount() {
+      return this.stringList.length;
+   }
+
+   @NotNull
+   public String getItem(int i) {
+      return this.stringList[i];
+   }
+
+   // $FF: synthetic method
+   // $FF: bridge method
+   public Object getItem(int var1) {
+      return this.getItem(var1);
+   }
+
+   public long getItemId(int i) {
+      return 0L;
+   }
+
+   @NotNull
+   public View getView(int i, @Nullable View view, @Nullable ViewGroup viewGroup) {
+      View viewObj = view;
+      StringAdapter.StringViewHolder var10000;
+      if (view == null) {
+         var10000 = new StringAdapter.StringViewHolder();
+      } else {
+         Object var6 = view.getTag();
+         if (var6 == null) {
+            throw new TypeCastException("null cannot be cast to non-null type com.example.mdp_group15_2021s2.StringAdapter.StringViewHolder");
+         }
+
+         var10000 = (StringAdapter.StringViewHolder)var6;
+      }
+
+      StringAdapter.StringViewHolder holder = var10000;
+      if (view == null) {
+         viewObj = this.inflater.inflate(17367043, (ViewGroup)null);
+         holder.setMain((TextView)viewObj.findViewById(16908308));
+         Intrinsics.checkExpressionValueIsNotNull(viewObj, "viewObj");
+         viewObj.setTag(holder);
+      }
+
+      TextView var7 = holder.getMain();
+      if (var7 != null) {
+         var7.setText((CharSequence)this.stringList[i]);
+      }
+
+      return viewObj;
+   }
+
+   public StringAdapter(@NotNull Context context, @NotNull String[] stringList) {
+      Intrinsics.checkParameterIsNotNull(context, "context");
+      Intrinsics.checkParameterIsNotNull(stringList, "stringList");
+      super();
+      this.stringList = stringList;
+      LayoutInflater var10001 = LayoutInflater.from(context);
+      Intrinsics.checkExpressionValueIsNotNull(var10001, "LayoutInflater.from(context)");
+      this.inflater = var10001;
+      ArraysKt.reverse(this.stringList);
+   }
+
+   public static final class StringViewHolder {
+      @Nullable
+      private TextView main;
+
+      @Nullable
+      public final TextView getMain() {
+         return this.main;
+      }
+
+      public final void setMain(@Nullable TextView var1) {
+         this.main = var1;
+      }
+   }
+}

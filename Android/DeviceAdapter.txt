@@ -1,0 +1,105 @@
+package com.example.mdp_group15_2021s2;
+
+import android.content.Context;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
+import android.widget.TextView;
+import com.example.mdp_group15_2021s2.entity.Device;
+import java.util.ArrayList;
+import kotlin.Metadata;
+import kotlin.TypeCastException;
+import kotlin.jvm.internal.Intrinsics;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+public final class DeviceAdapter extends BaseAdapter {
+   private final LayoutInflater inflater;
+   private final ArrayList deviceList;
+
+   public int getCount() {
+      return this.deviceList.size();
+   }
+
+   @Nullable
+   public Object getItem(int i) {
+      return null;
+   }
+
+   public long getItemId(int i) {
+      return 0L;
+   }
+
+   @NotNull
+   public View getView(int i, @Nullable View view, @Nullable ViewGroup viewGroup) {
+      View viewObj = view;
+      DeviceAdapter.DeviceViewHolder var10000;
+      if (view == null) {
+         var10000 = new DeviceAdapter.DeviceViewHolder();
+      } else {
+         Object var6 = view.getTag();
+         if (var6 == null) {
+            throw new TypeCastException("null cannot be cast to non-null type com.example.mdp_group15_2021s2.DeviceAdapter.DeviceViewHolder");
+         }
+
+         var10000 = (DeviceAdapter.DeviceViewHolder)var6;
+      }
+
+      DeviceAdapter.DeviceViewHolder holder = var10000;
+      if (view == null) {
+         viewObj = this.inflater.inflate(1300014, (ViewGroup)null);
+         holder.setDevice((TextView)viewObj.findViewById(1000161));
+         holder.setMacAddr((TextView)viewObj.findViewById(1000082));
+         Intrinsics.checkExpressionValueIsNotNull(viewObj, "viewObj");
+         viewObj.setTag(holder);
+      }
+
+      TextView var7 = holder.getDevice();
+      if (var7 != null) {
+         var7.setText((CharSequence)((Device)this.deviceList.get(i)).getDeviceName());
+      }
+
+      var7 = holder.getMacAddr();
+      if (var7 != null) {
+         var7.setText((CharSequence)((Device)this.deviceList.get(i)).getMacAddr());
+      }
+
+      return viewObj;
+   }
+
+   public DeviceAdapter(@NotNull Context context, @NotNull ArrayList deviceList) {
+      Intrinsics.checkParameterIsNotNull(context, "context");
+      Intrinsics.checkParameterIsNotNull(deviceList, "deviceList");
+      super();
+      this.deviceList = deviceList;
+      LayoutInflater var10001 = LayoutInflater.from(context);
+      Intrinsics.checkExpressionValueIsNotNull(var10001, "LayoutInflater.from(context)");
+      this.inflater = var10001;
+   }
+
+   public static final class DeviceViewHolder {
+      @Nullable
+      private TextView device;
+      @Nullable
+      private TextView macAddr;
+
+      @Nullable
+      public final TextView getDevice() {
+         return this.device;
+      }
+
+      public final void setDevice(@Nullable TextView var1) {
+         this.device = var1;
+      }
+
+      @Nullable
+      public final TextView getMacAddr() {
+         return this.macAddr;
+      }
+
+      public final void setMacAddr(@Nullable TextView var1) {
+         this.macAddr = var1;
+      }
+   }
+}

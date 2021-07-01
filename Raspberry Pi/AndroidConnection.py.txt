@@ -1,0 +1,81 @@
+# Bluetooth Connection
+# Channel 7
+
+from bluetooth import *
+import os
+import sys
+import threading
+import time
+
+
+class AndroidConnection(object):
+
+    # Initialize Android values
+    def __init__(self):
+        self.serversocket = None
+        self.clientsocket = None
+        self.BTConnection = False
+
+    # Method to initialize connection with Android
+    def initialize_bluetooth_connection(self):
+        port = 7
+        try:
+                self.serversocket = BluetoothSocket( RFCOMM )
+                self.serversocket.bind(("",port))
+                self.serversocket.listen(1)
+                self.port_number = self.serversocket.getsockname()[1]
+                uuid= "0000110c-0000-1000-8000-00805f9b34fb"
+
+                advertise_service( self.serversoc, "MDPGroup15-",
+                                    service_id = uuid,
+                                    service_classes=[ uuid, SERIAL_PORT_CLASS ],
+                                    profiles = [ SERIAL_PORT_PROFILE ],)
+                print ("Listening for Bluetooth connection - RFCOMM channel %d" % self.port_number)
+                self.clientsocket, clientinfo = self.serversocket.accept()
+                print ("Bluetooth Connected to: " , clientinfo)
+                self.BTconnection = True
+
+        except Exception as e:
+                print ("Error: %s" % str(e))
+                self.terminateBluetooth()
+
+    # Check Android Connection Status
+    def bluetooth_connection_status(self):
+        return self.BTConnection
+    
+
+    # Method to terminate Bluetooth Connection
+    def terminateBluetooth(self):
+        self.clientsocket.close()
+        print ("Client Socket is Terminating")
+        self.serversocket.close()
+        print ("Server Socket is Terminating")
+        self.BTConnection = False
+
+    # Method to read from Android
+    def Android_read(self):
+        try:
+            msg = self.clientsoc.recv(1024)
+            # Decode message
+            msg = msg.decode('utf-8')
+            print("Message received from Android: %s" % str(msg))
+            return(msg)
+
+        except BluetoothError:
+            print("Bluetooth Connection Error. [read] Trying to re-connect..")
+            self.initialize_bluetooth_connection()
+
+    # Method to write to Android
+    def Android_write(self,msg):
+        try:
+            self.clientsoc.send(str(msg))
+            print('Message sent to Android: %s' % msg)
+        except BluetoothError:
+            print ("Bluetooth Connection Error. [write] Trying to re-connect..")
+            self.terminateBluetooth()
+            self.initialize_bluetooth_connection()
+
+    def maintain(self):
+        while True:
+            time.sleep(1)
+

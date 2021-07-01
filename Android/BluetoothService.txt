@@ -1,0 +1,284 @@
+package com.example.mdp_group15_2021s2.service;
+
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
+import android.bluetooth.BluetoothSocket;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.Charset;
+import java.util.UUID;
+import kotlin.Metadata;
+import kotlin.jvm.internal.DefaultConstructorMarker;
+import kotlin.jvm.internal.Intrinsics;
+import kotlin.text.Charsets;
+import org.jetbrains.annotations.NotNull;
+
+
+public final class BluetoothService {
+   private BluetoothService.BluetoothConnection connection;
+   private BluetoothService.BluetoothServer server;
+   private BluetoothService.BluetoothStream stream;
+   private final Handler BTHandler;
+   private static final String TAG = "BluetoothService";
+   private static final UUID device_uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+   private static final String device_name = "MDPGroup15Android";
+   public static final BluetoothService.Companion Companion = new BluetoothService.Companion((DefaultConstructorMarker)null);
+
+   public final synchronized void connectDevice(@NotNull BluetoothDevice device) {
+      Intrinsics.checkParameterIsNotNull(device, "device");
+      this.connection = new BluetoothService.BluetoothConnection(device);
+      BluetoothService.BluetoothConnection var10000 = this.connection;
+      if (var10000 == null) {
+         Intrinsics.throwNpe();
+      }
+
+      var10000.start();
+   }
+
+   public final synchronized void startStream(@NotNull BluetoothSocket socket) {
+      Intrinsics.checkParameterIsNotNull(socket, "socket");
+      this.stream = new BluetoothService.BluetoothStream(socket);
+      BluetoothService.BluetoothStream var10000 = this.stream;
+      if (var10000 == null) {
+         Intrinsics.throwNpe();
+      }
+
+      var10000.start();
+   }
+
+   public final synchronized void cancel() {
+      BluetoothService.BluetoothConnection var10000 = this.connection;
+      if (var10000 != null) {
+         var10000.cancel();
+      }
+
+      BluetoothService.BluetoothStream var1 = this.stream;
+      if (var1 != null) {
+         var1.cancel();
+      }
+
+   }
+
+   public final synchronized void write(@NotNull String data) {
+      Intrinsics.checkParameterIsNotNull(data, "data");
+      Log.d("BluetoothService", "Sends : " + data);
+      BluetoothService.BluetoothStream var10000 = this.stream;
+      if (var10000 != null) {
+         BluetoothService.BluetoothStream var5 = var10000;
+         Charset var3 = Charsets.UTF_8;
+         boolean var4 = false;
+         byte[] var7 = data.getBytes(var3);
+         Intrinsics.checkExpressionValueIsNotNull(var7, "(this as java.lang.String).getBytes(charset)");
+         byte[] var6 = var7;
+         var5.write(var6);
+      }
+
+   }
+
+   public BluetoothService(@NotNull Handler BTHandler) {
+      Intrinsics.checkParameterIsNotNull(BTHandler, "BTHandler");
+      super();
+      this.BTHandler = BTHandler;
+   }
+
+   private final class BluetoothConnection extends Thread {
+      private BluetoothSocket objSocket;
+
+      public void run() {
+         BluetoothSocket var10000 = this.objSocket;
+         if (var10000 != null) {
+            BluetoothSocket var1 = var10000;
+            boolean var2 = false;
+            boolean var3 = false;
+            BluetoothSocket it = var1;
+            boolean var5 = false;
+
+            try {
+               it.connect();
+            } catch (IOException var9) {
+               Log.d("BluetoothService", "Failed to establish connection");
+
+               try {
+                  it.close();
+               } catch (IOException var8) {
+                  Log.d("BluetoothService", "Failed to close socket");
+                  BluetoothService.this.BTHandler.obtainMessage(2);
+               }
+
+               return;
+            }
+
+            BluetoothService.this.startStream(var1);
+         }
+
+      }
+
+      public final void cancel() {
+         try {
+            BluetoothSocket var10000 = this.objSocket;
+            if (var10000 != null) {
+               var10000.close();
+            }
+         } catch (IOException var2) {
+            Log.d("BluetoothService", "Failed to close socket");
+         }
+
+      }
+
+      public BluetoothConnection(@NotNull BluetoothDevice objDevice) {
+         Intrinsics.checkParameterIsNotNull(objDevice, "objDevice");
+         super();
+
+         try {
+            this.objSocket = objDevice.createInsecureRfcommSocketToServiceRecord(BluetoothService.device_uuid);
+         } catch (IOException var4) {
+            Log.d("BluetoothService", "Failed to create socket");
+            BluetoothService.this.BTHandler.obtainMessage(2);
+            this.objSocket = (BluetoothSocket)null;
+         }
+
+      }
+   }
+
+   private final class BluetoothServer extends Thread {
+      private BluetoothServerSocket objServerSocket;
+      private BluetoothSocket objSocket;
+
+      public void run() {
+         while(true) {
+            try {
+               BluetoothServerSocket var10001 = this.objServerSocket;
+               this.objSocket = var10001 != null ? var10001.accept() : null;
+               boolean chk = false;
+               BluetoothSocket var10000 = this.objSocket;
+               if (var10000 != null) {
+                  BluetoothSocket var2 = var10000;
+                  boolean var3 = false;
+                  boolean var4 = false;
+                  int var6 = false;
+                  BluetoothService.this.startStream(var2);
+                  BluetoothServerSocket var8 = this.objServerSocket;
+                  if (var8 != null) {
+                     var8.close();
+                  }
+
+                  chk = true;
+               }
+
+               if (chk) {
+                  return;
+               }
+            } catch (IOException var7) {
+               Log.d("BluetoothService", "Failed to accept socket");
+            }
+         }
+      }
+
+      public final void cancel() {
+         try {
+            BluetoothSocket var10000 = this.objSocket;
+            if (var10000 != null) {
+               var10000.close();
+            }
+         } catch (IOException var2) {
+            Log.d("BluetoothService", "Failed to close socket");
+         }
+
+      }
+
+      public BluetoothServer(@NotNull BluetoothAdapter bluetoothAdapter) {
+         Intrinsics.checkParameterIsNotNull(bluetoothAdapter, "bluetoothAdapter");
+         super();
+
+         try {
+            this.objServerSocket = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord("MDPGroup15Android", BluetoothService.device_uuid);
+         } catch (IOException var4) {
+            Log.d("BluetoothService", "Failed to listen to socket");
+            this.objServerSocket = (BluetoothServerSocket)null;
+         }
+
+      }
+   }
+   private final class BluetoothStream extends Thread {
+      private final InputStream socketInput;
+      private final OutputStream socketOutput;
+      private byte[] bufferStream;
+      private final BluetoothSocket objSocket;
+
+      public void run() {
+         this.bufferStream = new byte[1024];
+         boolean var1 = false;
+
+         while(true) {
+            try {
+               int byteSize = this.socketInput.read(this.bufferStream);
+               Message message = BluetoothService.this.BTHandler.obtainMessage(0, byteSize, -1, this.bufferStream);
+               message.sendToTarget();
+            } catch (IOException var3) {
+               Log.d("BluetoothService", "Failed to read from stream");
+               BluetoothService.this.BTHandler.obtainMessage(2);
+               return;
+            }
+         }
+      }
+
+      public final void write(@NotNull byte[] bytes) {
+         Intrinsics.checkParameterIsNotNull(bytes, "bytes");
+
+         try {
+            Log.d("BluetoothService", "Writing here");
+            this.socketOutput.write(bytes);
+            this.socketOutput.flush();
+         } catch (IOException var10) {
+            Log.d("BluetoothService", "Failed to write to receiver");
+            Message reportError = BluetoothService.this.BTHandler.obtainMessage(1);
+            Bundle var5 = new Bundle();
+            boolean var6 = false;
+            boolean var7 = false;
+            int var9 = false;
+            var5.putString("toast", "Failed to send data to other device");
+            Intrinsics.checkExpressionValueIsNotNull(reportError, "reportError");
+            reportError.setData(var5);
+            BluetoothService.this.BTHandler.sendMessage(reportError);
+         }
+
+      }
+
+      public final void cancel() {
+         try {
+            this.objSocket.close();
+         } catch (IOException var2) {
+            Log.d("BluetoothService", "Failed to close stream");
+         }
+
+      }
+
+      public BluetoothStream(@NotNull BluetoothSocket objSocket) {
+         Intrinsics.checkParameterIsNotNull(objSocket, "objSocket");
+         super();
+         this.objSocket = objSocket;
+         InputStream var10001 = this.objSocket.getInputStream();
+         Intrinsics.checkExpressionValueIsNotNull(var10001, "objSocket.inputStream");
+         this.socketInput = var10001;
+         OutputStream var3 = this.objSocket.getOutputStream();
+         Intrinsics.checkExpressionValueIsNotNull(var3, "objSocket.outputStream");
+         this.socketOutput = var3;
+         this.bufferStream = new byte[1024];
+      }
+   }
+   public static final class Companion {
+      private Companion() {
+      }
+
+      // $FF: synthetic method
+      public Companion(DefaultConstructorMarker $constructor_marker) {
+         this();
+      }
+   }
+}
