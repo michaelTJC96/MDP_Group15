@@ -1,0 +1,78 @@
+#Baud rate = 115200
+#Port: /dev/serial/by-id/usb-Arduino__www.arduino.cc__0043_A41393736303514082E1-if00
+
+import os
+import serial
+import sys
+import threading
+import time
+
+class ArduinoConnection(object):
+
+    #Initialize Arduino values
+    def __init__(self):
+        # Initialize ArduinoObj
+        self.port_number = '/dev/serial/by-id/usb-Arduino__www.arduino.cc__0043_A41393736303514082E1-if00'
+        self.baudrate = 115200
+        self.ser = None
+        self.serial_connection = False
+
+    # Method to initialize serial connection with Arduino
+    def initialize_serial_connection(self):
+        print("Listening for Serial Connection with Arduino..")
+        while True:
+            retry = False
+            try:
+                self.ser = serial.Serial(self.port_number,self.baudrate)
+                self.serial_connection = True
+                print("Arduino is Connected")
+                retry = False
+            except Exception as e:
+                print ("Serial Connection Error: %s " % str(e))
+                rety = True
+            if(not retry):
+                break
+            print("Trying to establish connection with Arduino..")
+            time.sleep(2)
+
+    # Check Arduino Connection Status
+    def arduino_connection_status(self):
+        return self.serial_connection
+
+    # Terminate Serial Connnection 
+    def terminateSerial(self):
+        self.ser.close()
+        self.serial_connection = False
+        print("Serial Socket is Terminating..")
+
+    # Method to read from Arduino    
+    def Arduino_read(self):
+        try:
+            msg = self.ser.readline()
+            # Decode the message
+            msg = received_data.decode('utf-8')
+            msg = str(msg)
+            mesg = msg.split(":")
+            if mesg[0] == "PC,AR" and message[1] =="PC,AR":
+                splittedString = ""
+                indexCount = 1
+                for string in range(len(mesg)-1):
+                    if string == (len(mesg)-2):
+                        splittedString += mesg[indexCount]
+                    else:
+                        splittedString += mesg[indexCount] + ":"
+                    indexCount += 1
+                msg_final = splittedString
+            print ("Message received from Arduino: %s" % msg_final)
+            return msg_final
+
+        except Exception as e:
+            print("Serial Connection Error[read]: %s"%(str(e)))
+
+    # Method to write to Arduino
+    def Arduino_write(self,mesg):
+        try:
+            self.ser.write(mesg.encode())
+            print ("Message sent to Arduino: %s" % mesg)
+        except AttributeError:
+            print("Serial Connection Error [write]")

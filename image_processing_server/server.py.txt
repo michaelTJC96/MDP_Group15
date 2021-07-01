@@ -1,0 +1,654 @@
+"""
+This file contains the ImageProcessingServer class.
+"""
+import os
+import shutil
+import sys
+from datetime import datetime
+
+import cv2
+import imutils
+import numpy as np
+import tensorflow as tf
+
+from config import *
+from image_receiver import custom_imagezmq as imagezmq
+from utils import label_map_util
+from utils import visualization_utils as vis_util
+
+import pathlib
+from PIL import Image
+
+import xml.etree.cElementTree as ET
+import six
+
+sys.path.append("..")
+
+# Grab path to current working directory
+cwd_path = os.getcwd()
+
+
+class ImageProcessingServer:
+    def __init__(self):
+        self.img_counter = 0
+        self.detected_symbols = []
+        self.model_path = os.path.join(cwd_path, MODEL_NAME)
+        self._initialise_directories()
+        self.detection_model = tf.saved_model.load(self.model_path)
+
+        # Path to label map file
+        self.labels_path = os.path.join(cwd_path, MODEL_NAME, LABEL_MAP)
+
+        label_map = label_map_util.load_labelmap(self.labels_path)
+        categories = label_map_util.convert_label_map_to_categories(
+            label_map,
+            max_num_classes=NUM_CLASSES,
+            use_display_name=True
+        )
+
+        self.category_index = label_map_util.create_category_index(categories)
+
+
+        # image to be sent from RPi to stop this server
+        self.stopping_image = cv2.imread(STOPPING_IMAGE)
+        # self.stopping_image = cv2.rotate(self.stopping_image, cv2.ROTATE_180) # if anything goes wrong delete this line
+        # self.stopping_image = imutils.resize(self.stopping_image, width=IMAGE_WIDTH)
+
+        # initialize the ImageHub object
+        self.image_hub = imagezmq.CustomImageHub()
+
+        self.frame_list = []  # list of frames with detections
+
+    def run_inference_for_single_image(self, image):
+        image = np.asarray(image)
+        # The input needs to be a tensor, convert it using `tf.convert_to_tensor`.
+        input_tensor = tf.convert_to_tensor(image)
+        # The model expects a batch of images, so add an axis with `tf.newaxis`.
+        input_tensor = input_tensor[tf.newaxis, ...]
+
+        # Run inference
+        model_fn = self.detection_model.signatures['serving_default']
+        output_dict = model_fn(input_tensor)
+
+        # All outputs are batches tensors.
+        # Convert to numpy arrays, and take index [0] to remove the batch dimension.
+        # We're only interested in the first num_detections.
+        num_detections = int(output_dict.pop('num_detections'))
+        output_dict = {key: value[0, :num_detections].numpy()
+                       for key, value in output_dict.items()}
+        output_dict['num_detections'] = num_detections
+
+        # detection_classes should be ints.
+        output_dict['detection_classes'] = output_dict['detection_classes'].astype(np.int64)
+
+        # Handle models with masks:
+        if 'detection_masks' in output_dict:
+            # Reframe the the bbox mask to the image size.
+            detection_masks_reframed = utils_ops.reframe_box_masks_to_image_masks(
+                output_dict['detection_masks'], output_dict['detection_boxes'],
+                image.shape[0], image.shape[1])
+            detection_masks_reframed = tf.cast(detection_masks_reframed > 0.5,
+                                               tf.uint8)
+            output_dict['detection_masks_reframed'] = detection_masks_reframed.numpy()
+
+        return(output_dict)
+
+    def start(self):
+        print('\nStarted image processing server.\n')
+
+        while True:
+            print('Waiting for image from RPi...')
+
+            # receive RPi name and frame from the RPi and acknowledge the receipt
+            obstacle_coordinates, frame = self.image_hub.recv_image()
+            print('Connected and received frame at time: ' + str(datetime.now()))
+
+            # resize the frame to have a width of IMAGE_WIDTH pixels, then
+            # grab the frame dimensions and construct a blob
+            frame = imutils.resize(frame, width=IMAGE_WIDTH)#try remove
+            frame = imutils.resize(frame, height=IMAGE_HEIGHT)#try remove
+
+            if self._is_stopping_frame(frame):
+                restart = self._show_all_images()
+
+                if restart:
+                    self._initialise_directories()
+                    self.frame_list.clear()
+                else:
+                    break  # stop image processing server
+
+            # Acquire frame and expand frame dimensions to have shape: [1, None, None, 3]
+            # i.e. a single-column array, where each item in the column has the pixel RGB value
+            # for input into model
+            # frame_expanded = np.expand_dims(frame, axis=0)
+
+            # form image file path for saving
+            # raw_image_name = RAW_IMAGE_PREFIX + str(self.img_counter) + IMAGE_ENCODING
+            # raw_image_path = os.path.join(self.raw_image_dir_path, raw_image_name)
+
+            # # Flipping the frame vertically
+            # frame = cv2.flip(frame, flipCode = -1)
+
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+            # save raw image & read back in
+            # save_success = cv2.imwrite(raw_image_path, frame)
+            # frame = np.array(Image.open(raw_image_path))
+
+
+            output = self.run_inference_for_single_image(frame)
+
+            # TO DELETE ONCE TESTING COMPLETED: when xml files are required
+            # self.generate_basic_structure(name=raw_image_name, detection_boxes=output['detection_boxes'],
+            #                          detection_classes=output['detection_classes'], category_index=self.category_index,
+            #                          detection_scores=output['detection_scores'], min_score_thresh=MIN_CONFIDENCE_THRESHOLD,
+            #                          directory="xml/")
+
+            bounding_boxes = output["detection_boxes"]
+            scores = output["detection_scores"]
+            classes = output["detection_classes"]
+
+            # bounding box format: [ymin, xmin, ymax, xmax]is
+            bounding_boxes = np.squeeze(bounding_boxes)
+            classes = np.squeeze(classes).astype(np.int32)
+            scores = np.squeeze(scores)
+
+            # convert from np array to list for getting true positive
+            bbox_list = bounding_boxes.tolist()
+            class_list = classes.tolist()
+            score_list = scores.tolist()
+
+            obstacle_symbol_map, bounding_boxes, classes, scores = \
+                self._get_true_positives(bbox_list, class_list, score_list)
+
+            # forms 'LEFT_SYMBOL|MIDDLE_SYMBOL|RIGHT_SYMBOL'
+            return_string = '|'.join(obstacle_symbol_map.values())
+            print(return_string)
+            print(self.if_center(obstacle_coordinates))
+            print(obstacle_coordinates)
+            return_string_copy_old = return_string
+            if return_string == '-1|-1|-1' and self.if_center(obstacle_coordinates):
+                #crop
+                print("Re-detecting after enlarge")
+
+                frame= frame[40:440,160:480]
+
+                # save processed image
+                save_success = cv2.imwrite('cropped.png', frame)
+
+                # end of test
+
+                #imageprocessing
+                output = self.run_inference_for_single_image(frame)
+                #redo reply
+                #height=60 width=50
+                #threshold=0.9
+                #overwrite return_string
+                bounding_boxes = output["detection_boxes"]
+                scores = output["detection_scores"]
+                classes = output["detection_classes"]
+
+                # bounding box format: [ymin, xmin, ymax, xmax]is
+                bounding_boxes = np.squeeze(bounding_boxes)
+                classes = np.squeeze(classes).astype(np.int32)
+                scores = np.squeeze(scores)
+
+                # convert from np array to list for getting true positive
+                bbox_list = bounding_boxes.tolist()
+                class_list = classes.tolist()
+                score_list = scores.tolist()
+
+                obstacle_symbol_map, bounding_boxes, classes, scores = \
+                    self._get_true_positives_cropped(bbox_list, class_list, score_list)
+
+                # forms 'LEFT_SYMBOL|MIDDLE_SYMBOL|RIGHT_SYMBOL'
+                return_string = '|'.join(obstacle_symbol_map.values())
+
+                _debug = cv2.resize(frame, (IMAGE_WIDTH, IMAGE_HEIGHT))
+                save_success = cv2.imwrite('processed_strecthed_back.png', _debug)
+
+
+
+            self.image_hub.send_reply(return_string)
+            print(return_string)
+            
+
+            
+            # convert from list to np array for visualising images
+            bounding_boxes = np.array(bounding_boxes)
+            classes = np.array(classes)
+            scores = np.array(scores)
+
+            if return_string_copy_old == '-1|-1|-1' and self.if_center(obstacle_coordinates):
+                frame = vis_util.visualize_boxes_and_labels_on_image_array(
+                    frame,
+                    bounding_boxes,
+                    classes,
+                    scores,
+                    # output["detection_boxes"], output["detection_classes"], output["detection_scores"],
+                    self.category_index,
+                    use_normalized_coordinates=True,
+                    line_thickness=8,
+                    instance_masks=output.get('detection_masks_reframed', None),
+                    min_score_thresh=MIN_CONFIDENCE_THRESHOLD_CROPPED
+                )
+            else:
+                # Draw the results of the detection (aka 'visualize the results')
+                frame = vis_util.visualize_boxes_and_labels_on_image_array(
+                    frame,
+                    bounding_boxes,
+                    classes,
+                    scores,
+                    # output["detection_boxes"], output["detection_classes"], output["detection_scores"],
+                    self.category_index,
+                    use_normalized_coordinates=True,
+                    line_thickness=8,
+                    instance_masks=output.get('detection_masks_reframed', None),
+                    min_score_thresh=MIN_CONFIDENCE_THRESHOLD
+                )
+            frame = cv2.resize(frame, (IMAGE_WIDTH, IMAGE_HEIGHT))
+            # TO DELETE ONCE TESTING COMPLETED
+            # x = self.get_classes_name_and_scores(output["detection_boxes"], output["detection_classes"], output["detection_scores"], self.category_index, min_score_thresh = 0.7)
+            # print(x)
+
+            # All the results have been drawn on the frame, so it's time to display it.
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # form image file path for saving
+            processed_image_name = PROCESSED_IMAGE_PREFIX + \
+                str(self.img_counter) + IMAGE_ENCODING
+            processed_image_path = os.path.join(
+                self.processed_image_dir_path,
+                processed_image_name
+            )
+
+            # save processed image
+            save_success = cv2.imwrite(processed_image_path, frame_rgb)
+
+            self.img_counter += 1
+
+
+            if return_string != '-1|-1|-1':
+                for i in obstacle_symbol_map.values():
+                    if i != NO_SYMBOL and not i in self.detected_symbols:
+                        self.frame_list.append(frame_rgb)
+                        print(len(self.frame_list))
+                        self._save_tile(len(self.frame_list))
+                        break
+
+            self.detected_symbols.extend([i for i in obstacle_symbol_map.values() if i != NO_SYMBOL and i not in self.detected_symbols])
+
+            print(self.detected_symbols)
+            # send_reply disconnects the connection
+            print('Sent reply and disconnected at time: ' + str(datetime.now()) + '\n')
+
+        self.end()
+    
+    def if_center(self,obstacle_coordinates):
+        obstacle_coordinate_list = obstacle_coordinates.split('|')
+        direction = obstacle_coordinate_list[-1]
+        coordinate_list = obstacle_coordinate_list[:-1]
+        setSN={'5','6','7','8','9','10','11'}
+        setS={'14','15','16','17','18','19'}
+        setN={'0','1','2','3','4','5'}
+        setEW={'5','6','7','8','9','10','11','12','13','14','15'}
+        setE={'0','1','2','3','4'}
+        setW={'10','11','12','13','14'}
+        #x looks like 'x,y'
+        for x in coordinate_list:
+            coordinate=x.split(',')
+            if coordinate[0] in setE and direction == 'S' and coordinate[1] in setEW: # orignally E
+                return True
+            elif coordinate[1] in setS and direction == 'W' and coordinate[0] in setSN: #oringally S
+                return True 
+            elif coordinate[0] in setW and direction == 'N' and coordinate[1] in setEW: #oringally W
+                return True
+            elif coordinate[1] in setN and direction == 'E' and coordinate[0] in setSN: # oringally N
+                return True
+        return False
+
+    def end(self):
+        print('Stopping image processing server')
+
+        self.image_hub.send_reply('End')
+        # send_reply disconnects the connection
+        print('Sent reply and disconnected at time: ' + str(datetime.now()) + '\n')
+
+    def _show_all_images(self):
+        """
+        return:
+            whether key pressed is 'r'
+        """
+        zero = np.zeros((int(IMAGE_HEIGHT*DISPLAY_IMAGE_SCALE),int(IMAGE_WIDTH*DISPLAY_IMAGE_SCALE*0.5),3))
+        half_image1 = np.zeros((int(IMAGE_HEIGHT*DISPLAY_IMAGE_SCALE),1,3))
+        half_image2 = np.zeros((int(IMAGE_HEIGHT*DISPLAY_IMAGE_SCALE),1,3))
+        for i in range(0,len(self.frame_list)):
+            self.frame_list[i] = cv2.resize(self.frame_list[i], (0, 0), fx=DISPLAY_IMAGE_SCALE, fy=DISPLAY_IMAGE_SCALE)
+            if i%2==0:
+                half_image1 = np.concatenate((half_image1,self.frame_list[i]), axis=1)
+            else:
+                half_image2 = np.concatenate((half_image2,self.frame_list[i]), axis=1)
+        if len(self.frame_list)%2==1:
+            half_image2 = np.concatenate((zero,half_image2), axis=1)
+            half_image2 =np.concatenate((half_image2,zero), axis=1)
+        full_image = np.concatenate((half_image1,half_image2), axis=0)
+        full_image = full_image.astype(np.uint8)
+        cv2.imwrite("Tiled_image.png", full_image)
+        cv2.imshow('Image Recognition Output', full_image)
+
+        keycode = cv2.waitKey(0)
+
+        cv2.destroyAllWindows()
+
+        # https://stackoverflow.com/q/57690899/9171260
+        return keycode & 0xFF == ord('r')
+
+    def _save_tile(self, name):
+        zero = np.zeros((int(IMAGE_HEIGHT*DISPLAY_IMAGE_SCALE),int(IMAGE_WIDTH*DISPLAY_IMAGE_SCALE*0.5),3))
+        half_image1 = np.zeros((int(IMAGE_HEIGHT*DISPLAY_IMAGE_SCALE),1,3))
+        half_image2 = np.zeros((int(IMAGE_HEIGHT*DISPLAY_IMAGE_SCALE),1,3))
+        internal_frame_list = []
+        for i in range(0,len(self.frame_list)):
+            internal_frame_list.append(cv2.resize(self.frame_list[i], (0, 0), fx=DISPLAY_IMAGE_SCALE, fy=DISPLAY_IMAGE_SCALE))
+            if i%2==0:
+                half_image1 = np.concatenate((half_image1,internal_frame_list[i]), axis=1)
+            else:
+                half_image2 = np.concatenate((half_image2,internal_frame_list[i]), axis=1)
+        if len(internal_frame_list)%2==1:
+            half_image2 = np.concatenate((zero,half_image2), axis=1)
+            half_image2 =np.concatenate((half_image2,zero), axis=1)
+        full_image = np.concatenate((half_image1,half_image2), axis=0)
+        full_image = full_image.astype(np.uint8)
+        cv2.imwrite("Tiled_image_" + str(name) + ".png", full_image)
+
+
+    def _initialise_directories(self):
+        image_dir_path = os.path.join(cwd_path, MAIN_IMAGE_DIR)
+
+        if os.path.exists(image_dir_path):
+            shutil.rmtree(image_dir_path)
+
+        self.raw_image_dir_path = os.path.join(image_dir_path, RAW_IMAGE_DIR)
+        os.makedirs(self.raw_image_dir_path)
+
+        self.processed_image_dir_path = os.path.join(image_dir_path, PROCESSED_IMAGE_DIR)
+        os.makedirs(self.processed_image_dir_path)
+
+    def _is_stopping_frame(self, frame):
+        difference = cv2.subtract(frame, self.stopping_image)
+        return not np.any(difference)
+
+    def _get_true_positives(self, bbox_list, class_list, score_list):
+        """
+        params:
+        - bbox_list (list): [
+            [top_left_y (float), top_left_x (float), bot_right_y (float), bot_right_x (float)],
+            ...,
+        ]
+        - class_list (list): [class_id (int), ]
+        - score_list (list): [confidence_score (float)]
+
+        return: (
+            { LEFT_OBSTACLE: SYMBOL, MIDDLE_OBSTACLE: SYMBOL, RIGHT_OBSTACLE: SYMBOL },
+            true positive bounding boxes (list),
+            true positive classes (list),
+            true positive confidence scores (list),
+        )
+        """
+        bounding_boxes, classes, scores = [], [], []
+
+        # -1 means no detection for that obstacle
+        obstacle_symbol_map = {
+            LEFT_OBSTACLE: NO_SYMBOL,
+            MIDDLE_OBSTACLE: NO_SYMBOL,
+            RIGHT_OBSTACLE: NO_SYMBOL,
+        }
+
+        num_symbols = 0
+
+        left_xmax = float('-inf')
+        right_xmin = float('inf')
+
+        for bbox, class_id, score in zip(bbox_list, class_list, score_list):
+            if num_symbols >= 3:
+                break
+
+            top_left_y, top_left_x, bot_right_y, bot_right_x = tuple(bbox)
+
+            top_left_y = top_left_y * IMAGE_HEIGHT
+            top_left_x = top_left_x * IMAGE_WIDTH
+            bot_right_y = bot_right_y * IMAGE_HEIGHT
+            bot_right_x = bot_right_x * IMAGE_WIDTH
+
+            middle_x = (top_left_x + bot_right_x)/2
+            middle_y = (top_left_y + bot_right_y)/2
+
+            width = abs(top_left_x - bot_right_x)
+            height = abs(top_left_y - bot_right_y)
+            height_width_ratio = abs(height / width)
+
+            if class_id in ["4", "8", "11"] and score <= NON_RED_CONFIDENCE_THRESHOLD:
+                print("Item is red, confidence below 70%")
+                continue
+            # false positive if:
+            # confidence score is lower than a generic threshold (for all classes)
+            # the bottom y-coordinate is lower than its repective threshold (too far)
+
+            if class_id in ["1", "2", "3", "4"] and width < ARROW_MIN_WIDTH:
+                continue
+
+            if ((score <= MIN_CONFIDENCE_THRESHOLD)
+                or (bot_right_y > YMAX_THRESHOLD) \
+                or (height < SYMBOL_MIN_HEIGHT) \
+                or (height > SYMBOL_MAX_HEIGHT) \
+                or (width < SYMBOL_MIN_WIDTH) \
+                or (width > SYMBOL_MAX_WIDTH) \
+                # or (height_width_ratio < SYMBOL_MIN_HEIGHT_WIDTH_RATIO) \
+                # or (height_width_ratio > SYMBOL_MAX_HEIGHT_WIDTH_RATIO)
+                ):
+                continue  # false positive -> skip
+
+            if (middle_x < SYMBOL_ON_LEFT_OF_IMAGE_THRESHOLD):  # symbol left
+                # obstacle already has a symbol of higher confidence,
+                # and is directly to the left of middle
+                if obstacle_symbol_map[LEFT_OBSTACLE] != NO_SYMBOL and bot_right_x < left_xmax:
+                    continue
+
+                left_xmax = bot_right_x
+                obstacle_symbol_map[LEFT_OBSTACLE] = str(class_id)
+
+            elif (middle_x  > SYMBOL_ON_RIGHT_OF_IMAGE_THRESHOLD):  # symbol right
+                # obstacle already has a symbol of higher confidence,
+                # and is directly to the right of middle
+                if obstacle_symbol_map[RIGHT_OBSTACLE] != NO_SYMBOL and top_left_x > right_xmin:
+                    continue
+
+                right_xmin = top_left_x
+                obstacle_symbol_map[RIGHT_OBSTACLE] = str(class_id)
+
+            else:  # symbol middle
+                # obstacle already has a symbol of higher confidence
+                if obstacle_symbol_map[MIDDLE_OBSTACLE] != NO_SYMBOL:
+                    continue
+
+                obstacle_symbol_map[MIDDLE_OBSTACLE] = str(class_id)
+
+            bounding_boxes.append(bbox)
+            classes.append(class_id)
+            scores.append(score)
+
+            print(
+                'id: ', class_id,
+                'confidence: ', '{:.3f}'.format(score),
+                '\n',
+                'xmin: ', '{:.3f}'.format(top_left_x),
+                'xmax: ', '{:.3f}'.format(bot_right_x),
+                'ymax: ', '{:.3f}'.format(bot_right_y),
+                '\n',
+            )
+
+            num_symbols += 1
+
+        return obstacle_symbol_map, bounding_boxes, classes, scores
+
+    def _get_true_positives_cropped(self, bbox_list, class_list, score_list):
+        """
+        params:
+        - bbox_list (list): [
+            [top_left_y (float), top_left_x (float), bot_right_y (float), bot_right_x (float)],
+            ...,
+        ]
+        - class_list (list): [class_id (int), ]
+        - score_list (list): [confidence_score (float)]
+
+        return: (
+            { LEFT_OBSTACLE: SYMBOL, MIDDLE_OBSTACLE: SYMBOL, RIGHT_OBSTACLE: SYMBOL },
+            true positive bounding boxes (list),
+            true positive classes (list),
+            true positive confidence scores (list),
+        )
+        """
+        bounding_boxes, classes, scores = [], [], []
+
+        # -1 means no detection for that obstacle
+        obstacle_symbol_map = {
+            LEFT_OBSTACLE: NO_SYMBOL,
+            MIDDLE_OBSTACLE: NO_SYMBOL,
+            RIGHT_OBSTACLE: NO_SYMBOL,
+        }
+
+        num_symbols = 0
+
+        left_xmax = float('-inf')
+        right_xmin = float('inf')
+
+        for bbox, class_id, score in zip(bbox_list, class_list, score_list):
+            if num_symbols >= 3:
+                break
+
+            top_left_y, top_left_x, bot_right_y, bot_right_x = tuple(bbox)
+
+            top_left_y = top_left_y * CROPPED_IMAGE_HEIGHT
+            top_left_x = top_left_x * CROPPED_IMAGE_WIDTH
+            bot_right_y = bot_right_y * CROPPED_IMAGE_HEIGHT
+            bot_right_x = bot_right_x * CROPPED_IMAGE_WIDTH
+
+            middle_x = (top_left_x + bot_right_x)/2
+            middle_y = (top_left_y + bot_right_y)/2
+
+            width = abs(top_left_x - bot_right_x)
+            height = abs(top_left_y - bot_right_y)
+            height_width_ratio = abs(height / width)
+
+            if class_id in ["4", "8", "11"] and score <= NON_RED_CONFIDENCE_THRESHOLD:
+                print("Item is red, confidence below 70%")
+                continue
+            # false positive if:
+            # confidence score is lower than a generic threshold (for all classes)
+            # the bottom y-coordinate is lower than its repective threshold (too far)
+            print(score)
+            print(height)
+            print(width)
+            print(bot_right_y)
+            print()
+            if ((score <= MIN_CONFIDENCE_THRESHOLD_CROPPED)
+                or (bot_right_y > YMAX_THRESHOLD_CROPPED) \
+                or (height < SYMBOL_MIN_HEIGHT_CROPPED) \
+                or (height > SYMBOL_MAX_HEIGHT_CROPPED) \
+                or (width < SYMBOL_MIN_WIDTH_CROPPED) \
+                or (width > SYMBOL_MAX_WIDTH_CROPPED) \
+                # or (height_width_ratio < SYMBOL_MIN_HEIGHT_WIDTH_RATIO) \
+                # or (height_width_ratio > SYMBOL_MAX_HEIGHT_WIDTH_RATIO)
+                ):
+
+                continue  # false positive -> skip
+
+            if (middle_x < SYMBOL_ON_LEFT_OF_IMAGE_THRESHOLD_CROPPED):  # symbol left
+                # obstacle already has a symbol of higher confidence,
+                # and is directly to the left of middle
+                if obstacle_symbol_map[LEFT_OBSTACLE] != NO_SYMBOL and bot_right_x < left_xmax:
+                    continue
+
+                left_xmax = bot_right_x
+                obstacle_symbol_map[LEFT_OBSTACLE] = str(class_id)
+
+            elif (middle_x  > SYMBOL_ON_RIGHT_OF_IMAGE_THRESHOLD_CROPPED):  # symbol right
+                # obstacle already has a symbol of higher confidence,
+                # and is directly to the right of middle
+                if obstacle_symbol_map[RIGHT_OBSTACLE] != NO_SYMBOL and top_left_x > right_xmin:
+                    continue
+
+                right_xmin = top_left_x
+                obstacle_symbol_map[RIGHT_OBSTACLE] = str(class_id)
+
+            else:  # symbol middle
+                # obstacle already has a symbol of higher confidence
+                if obstacle_symbol_map[MIDDLE_OBSTACLE] != NO_SYMBOL:
+                    continue
+
+                obstacle_symbol_map[MIDDLE_OBSTACLE] = str(class_id)
+
+            bounding_boxes.append(bbox)
+            classes.append(class_id)
+            scores.append(score)
+
+            print(
+                'id: ', class_id,
+                'confidence: ', '{:.3f}'.format(score),
+                '\n',
+                'xmin: ', '{:.3f}'.format(top_left_x),
+                'xmax: ', '{:.3f}'.format(bot_right_x),
+                'ymax: ', '{:.3f}'.format(bot_right_y),
+                '\n',
+            )
+
+            num_symbols += 1
+
+        return obstacle_symbol_map, bounding_boxes, classes, scores
+
+    def get_classes_name_and_scores(self,
+            boxes,
+            classes,
+            scores,
+            category_index,
+            max_boxes_to_draw=20,
+            min_score_thresh=.9):  # returns bigger than 90% precision
+        display_str = {}
+        if not max_boxes_to_draw:
+            max_boxes_to_draw = boxes.shape[0]
+        for i in range(min(max_boxes_to_draw, boxes.shape[0])):
+            if scores is None or scores[i] > min_score_thresh:
+                if classes[i] in six.viewkeys(category_index):
+                    display_str['name'] = category_index[classes[i]]['name']
+                    display_str['score'] = '{}%'.format(int(100 * scores[i]))
+
+        return display_str
+
+    def generate_basic_structure(self, name, detection_boxes, detection_classes, category_index, detection_scores,
+                                 min_score_thresh, directory):
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        file_name = name.split('.')[0]
+        annotation = ET.Element("annotation")
+        ET.SubElement(annotation, "filename").text = file_name + ".jpg"
+        size = ET.SubElement(annotation, "size")
+        ET.SubElement(size, "width").text = str(IMAGE_WIDTH)
+        ET.SubElement(size, "height").text = str(IMAGE_HEIGHT)
+        ET.SubElement(size, "depth").text = "3"
+
+        for i in range(detection_boxes.shape[0]):
+            box = tuple(detection_boxes[i].tolist())
+            if detection_scores[i] > min_score_thresh:
+                objectBox = ET.SubElement(annotation, "object")
+                ET.SubElement(objectBox, "name").text = category_index[detection_classes[i]]['name']
+                ET.SubElement(objectBox, "pose").text = "Unspecified"
+                ET.SubElement(objectBox, "truncated").text = "0"
+                ET.SubElement(objectBox, "difficult").text = "0"
+                bndBox = ET.SubElement(objectBox, "bndbox")
+                ET.SubElement(bndBox, "xmin").text = str(int(box[1] * IMAGE_WIDTH))
+                ET.SubElement(bndBox, "ymin").text = str(int(box[0] * IMAGE_HEIGHT))
+                ET.SubElement(bndBox, "xmax").text = str(int(box[3] * IMAGE_WIDTH))
+                ET.SubElement(bndBox, "ymax").text = str(int(box[2] * IMAGE_HEIGHT))
+
+        arquivo = ET.ElementTree(annotation)
+        arquivo.write(directory + file_name + ".xml")
