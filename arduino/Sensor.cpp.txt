@@ -1,0 +1,137 @@
+#include "Sensor.h"
+#include "DualVNH5019MotorShield.h"
+#include "SharpIR.h"
+
+SharpIR F_L_sensor(A0, 1080); //front left
+SharpIR F_M_sensor(A1, 1080); //front mid
+SharpIR F_R_sensor(A2, 1080); //front right
+SharpIR L_1_sensor(A3, 1080); //left front
+SharpIR L_2_sensor(A4, 1080); //left back
+SharpIR R_sensor(A5, 20150);  //right
+
+
+Sensor::Sensor(){
+    
+}
+
+
+float Sensor::FrontLeft() {
+  
+  float i = F_L_sensor.median_Voltage_Sampling();
+  float dist = F_L_sensor.distance() - 3.12;
+   
+  if(dist > 40 || dist < 0)
+  {
+    return 40;
+  } 
+  else
+  {
+    return dist;
+  }
+}
+
+float Sensor::FrontMid() {
+
+  float i = F_M_sensor.median_Voltage_Sampling();
+  float dist = F_M_sensor.distance() - 5.26;
+  if(dist > 40 || dist < 0)
+  {
+    return 40;
+  } 
+  else 
+  {
+    return dist;
+  }
+}
+
+float Sensor::FrontRight() {
+
+  float i = F_R_sensor.median_Voltage_Sampling();
+  float dist = F_R_sensor.distance() - 3.12;
+
+  if(dist > 40 || dist < 0)
+  {
+    return 40;
+  } 
+  else
+  {
+    return dist;
+  }
+}
+
+float Sensor::LeftFront() {
+
+  float i = L_1_sensor.median_Voltage_Sampling();
+  float dist = ( 32.2953 / i )-7.67349;   
+  if(dist > 40 || dist < 0)
+  {
+    return 40;
+  } 
+  else
+  {
+    return dist;
+  }
+}
+
+
+float Sensor::LeftBack() {
+  
+  float i = L_2_sensor.median_Voltage_Sampling();
+  float dist = ( 30.68132 / i )-7.074208;   
+  if(dist > 40 || dist < 0)
+  {
+    return 40;
+  } 
+  else
+  {
+    return dist;
+  }
+}
+
+void Sort_Float_Array(float a[], int size){
+    float temp;
+    for (int i=0; i<size; i++){
+      for (int j=i; j>0; j--){
+        if (a[j] < a[j-1])
+		{
+          temp = a[j];
+          a[j] = a[j-1];
+          a[j-1] = temp;
+        }
+        else
+          break;
+      }
+    }
+}
+
+float Sensor::Right() {
+  
+  float sensorR[10];
+  for(int i = 0 ; i < 10; i++){
+    delay(0.5);
+    sensorR[i] = R_sensor.median_Voltage_Sampling();
+  }
+  Sort_Float_Array(sensorR,10);
+  float i = sensorR[5];
+  float dist = R_sensor.distance() - 14;
+
+}
+
+
+/*Grid Convert short range sensor (for Algo team)
+Grid 0 = 0 <= dist && dist <= 11;
+Grid 1 = 11 < dist && dist <= 20; 
+Grid 2 = 20 < dist && dist <= ;
+Grid 3 = 28 < dist && dist <= 39;
+Grid 4 = 39 < dist && dist <= 50;
+else Grid 5
+*/
+
+/*Grid Convert long range sensor (for Algo team)
+Grid 0 = 0 <= dist && dist <= 11;
+Grid 1 = 11 < dist && dist <= 20; 
+Grid 2 = 20 < dist && dist <= 31;
+else Grid 3
+*/
+
+

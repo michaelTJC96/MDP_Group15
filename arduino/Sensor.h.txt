@@ -1,0 +1,14 @@
+class Sensor{
+	private:
+	public:
+	
+		Sensor();
+		
+		float FrontLeft();
+		float FrontMid();
+		float FrontRight();
+		float LeftFront();
+		float LeftBack();
+		float Right();
+
+};

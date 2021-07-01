@@ -1,0 +1,755 @@
+#include "EnableInterrupt.h"
+#include "DualVNH5019MotorShield.h"
+#include "Sensor.h"
+#include "math.h"
+DualVNH5019MotorShield md;
+Sensor sensor;
+
+//Movement pin
+#define ENA1 3 // Left
+#define ENB1 5 // Left
+#define ENA2 11 // Right
+#define ENB2 13 // Right
+
+static volatile long Tick_L;
+static volatile long Tick_R;
+unsigned long TIMEINIT_L;
+unsigned long TIMEINIT_R;
+unsigned long current_timeL;
+unsigned long current_timeR;
+unsigned long rpmtimeL[5];
+unsigned long rpmtimeR[5];
+
+
+int rpmTable[2][16];
+
+// Sensors
+#define ps1 A0
+#define ps2 A1
+#define ps3 A2
+#define ps4 A3
+#define ps5 A4
+#define ps6 A5
+
+// PID variables
+//stable voltage 6.4-6.5V
+//volt 3/3/2021 3:37PM 6.42V
+//volt 3/4/2021 11:08AM 6.45V
+//volt 3/4/2021 11:21AM 6.43V
+//volt 3/4/2021 12:13AM 6.47V
+//volt 10/3/2021 6.4V
+//volt 11/3/2021 6.55V perfect 6.59V perfect 6.51V perfect
+//volt 11/3/2021 7:05PM 6.47V ok 6.43V ok
+double kpL = 1.3712; //1.301 //1.387
+double kiL = 0; //0.4
+double kdL = 0.0541 * kpL; //1.577
+
+double kpR = 1.24976; //1.269 //1.24
+double kiR = 0; //0.55
+double kdR = 0.0495 * kpR; //0.075 //0.065 
+
+
+double errorL = 0;
+double errorR = 0;
+double previouserrorL = 0;
+double previouserrorR = 0;
+double sumerrorL = 0;
+double sumerrorR = 0;
+double distL;
+double distR;
+double distTravelled;
+double newspeedL;
+double newspeedR;
+
+double left_m = -2.6161442;
+double right_m = 2.6778592;
+double left_c = -11.610704;
+double right_c = 18.187082;
+
+
+//Calculate for left motor speed
+double calspeedL(double setspeedL, unsigned long rpmtimeL)
+{
+  double currentrpmL = (60.00/((rpmtimeL * 562.25)/1000000.00));
+  double setrpmL = convertRPML(setspeedL); 
+  errorL = setrpmL - currentrpmL;
+  double pidspeedL = currentrpmL + (errorL * kpL) + ((errorL - previouserrorL)* kdL) + (sumerrorL * kiL);
+
+  
+  if( pidspeedL <= 0 ){
+    pidspeedL = 0;
+  }
+  
+  if(pidspeedL >= 139){
+    pidspeedL = 139;
+  }
+  newspeedL = convertspeedL(pidspeedL);
+  previouserrorL = errorL;
+  return newspeedL;
+}
+
+//Calculate for right motor speed
+double calspeedR(double setspeedR, unsigned long rpmtimeR)
+{
+  double currentrpmR = (60.00/((rpmtimeR * 562.25)/1000000.00));
+  double setrpmR = convertRPMR(setspeedR); 
+  errorR = setrpmR - currentrpmR;
+  double pidspeedR = currentrpmR + (errorR * kpR) + ((errorR - previouserrorR)* kdR) + (sumerrorR * kiR);
+
+  
+  if( pidspeedR <= 0 ){
+    pidspeedR = 0;
+  }
+  
+  if(pidspeedR >= 132){
+    pidspeedR = 132;
+  }
+  newspeedR = convertspeedR(pidspeedR);
+  previouserrorR = errorR;
+  return newspeedR;
+}
+
+double convertspeedL(double rpmL)
+{
+  return rpmL*left_m + left_c;
+}
+
+double convertspeedR(double rpmR)
+{
+  return rpmR*right_m + right_c;
+}
+
+double convertRPML(double SpeedL)
+{
+  double RPML = (SpeedL - left_c) / left_m;
+  return RPML;
+}
+
+double convertRPMR(double SpeedR)
+{
+  double RPMR = (SpeedR - right_c) / right_m;
+  return RPMR;
+}
+
+void resetDist()
+{
+  distL = 0;
+  distR = 0;
+  distTravelled = 0;
+}
+
+//bubblesort
+long unsigned int bubblesort(int count, unsigned long * pulsewidth) 
+{
+  
+  for (int i = 1 ; i < count; i++) { 
+    for (int j = i; j > 0; j++)  { 
+      if ( pulsewidth[j] < pulsewidth[j - 1] ) { 
+        int temp;
+        temp = pulsewidth[j];
+        pulsewidth [j] = pulsewidth[j - 1];
+        pulsewidth[j - 1] = temp;
+      }
+      else 
+        break;
+    }
+  }
+  return pulsewidth[count / 2];
+}
+
+//Left Motor Tick
+void Tick_IncL()
+{
+  current_timeL = micros();
+  TIMEINIT_L = micros();
+  int i = 0;
+  while(i<4){
+    rpmtimeL[i] = rpmtimeL[i+1];
+    i++;
+  }
+  rpmtimeL[4] = current_timeL - TIMEINIT_L;
+  TIMEINIT_L = current_timeL;
+  Tick_L++;
+}
+ 
+
+//Right Motor Tick()
+void Tick_IncR()
+{
+  current_timeR = micros();
+  TIMEINIT_R = micros();
+  int i = 0;
+  while(i<4){
+    rpmtimeR[i] = rpmtimeR[i + 1];
+    i++;
+  }
+  rpmtimeR[4] = current_timeR - TIMEINIT_R; 
+  TIMEINIT_R = current_timeR;
+  Tick_R++;
+ 
+}
+
+int tick_l()
+{
+  return Tick_L;
+}
+
+int tick_r()
+{
+  return Tick_R;
+}
+
+void ResetTick()
+{
+  Tick_L = 0;
+  Tick_R = 0;
+  for (int i = 0 ; i < 4; i++) {
+    rpmtimeL[i] = 1830;
+    rpmtimeR[i] = 1910;
+  }
+  
+}
+
+void leftmotor_test( int pulsewidth) {
+  md.setSpeeds(-250, 250);
+  delay(1000);
+  int cnt = 0;
+  unsigned long init_time = millis();
+  while (cnt < 100) {
+    Serial.println((int)rpmtimeL[4]);
+    delay(5); 
+    cnt++;
+  }
+  md.setSpeeds(-300, 300); 
+  while ( rpmtimeL[4] >= pulsewidth) {
+    Serial.println(rpmtimeL[4]);
+    delay(5); 
+  }
+  while (cnt < 200) {
+    Serial.println(rpmtimeL[4]);
+    delay(5); 
+    cnt++;
+  }
+  md.setBrakes(400, 400);
+}
+
+void rightmotor_test(int pulsewidth) {
+  md.setSpeeds(-250, 250);
+  delay(1000);
+  int cnt = 0;
+  while (cnt < 100) { 
+    Serial.println(rpmtimeR[4]);
+    delay(5); 
+    cnt++;
+  }
+  md.setSpeeds(-300, 300);
+  while ( rpmtimeR[4] >= pulsewidth) { 
+    Serial.println(rpmtimeR[4]);
+    delay(5); 
+  }
+  while (cnt < 200) { 
+    Serial.println(rpmtimeR[4]);
+    delay(5); // 
+    cnt++;
+  }
+  md.setBrakes(400, 400);
+}
+
+void numoftick(int count) {
+  unsigned long pulsewidth[count] = { 0 };
+  int cnt = 0;
+  /////Left motor
+  int i = -50;
+  while (i >= -400){
+    cnt = 0;
+    md.setSpeeds(i, -i);
+    while (cnt < count){
+      ResetTick();
+      while (Tick_L < 1){
+      }
+      pulsewidth[cnt] = rpmtimeL[4]; 
+      cnt++;
+    }
+    rpmTable[0][i / -50 + 7] = bubblesort(count, pulsewidth);
+    Serial.println(pulsewidth[count / 2]);
+    i = i - 50;
+  }
+  md.setBrakes(400, 400);
+  delay(2000);
+
+  /////Right motor
+  int x = 50;
+  while (x <= 400){
+    cnt = 0;
+    md.setSpeeds(-x, x);
+    while(cnt < count){
+      ResetTick();
+      while (Tick_R < 1){
+      }
+      pulsewidth[cnt] = rpmtimeR[4]; 
+      cnt++;
+    }
+    rpmTable[1][i / 50 - 1] = bubblesort(count, pulsewidth);
+    Serial.println(pulsewidth[count / 2]);
+    x = x + 50;
+   }
+   md.setBrakes(300,300);
+   delay(2000);
+
+  leftmotor_test(rpmTable[0][13]);
+  rightmotor_test(rpmTable[1][5]);
+
+}
+/////All the movement //////
+void Forward(double SpeedL, double SpeedR, int Grid_Number, Sensor sensor) {
+  double lspeed = 0;
+  double rspeed = 0;
+  double Dist_p;
+  resetDist();
+  
+  for ( int i = 0; i < Grid_Number; i++) {
+      ResetTick();
+      Dist_p = 8.488; //8.88
+      md.setSpeeds(SpeedL, SpeedR);
+    while (distTravelled <= Dist_p) { 
+      if(sensor.FrontLeft() < 6 || sensor.FrontRight() < 6 || sensor.FrontMid() < 6 )
+      { // if there's obstacles, stop
+        md.setBrakes(300, 300);
+        i = Grid_Number;
+        break;
+      }
+      delay(0.005); 
+      while(Tick_L < 10 || Tick_R < 10){
+        lspeed = calspeedL(SpeedL, bubblesort(10, rpmtimeL));
+        rspeed = calspeedR(SpeedR, bubblesort(10, rpmtimeR));
+      }
+      md.setSpeeds(lspeed, rspeed);
+      distL = 2 * 3 * M_PI * (tick_l() / 562.25);
+      distR = 2 * 3 * M_PI * (tick_r() / 562.25);
+      distTravelled = (distL + distR) / 2;
+    }
+    distTravelled = 0;
+    md.setBrakes(400,377);
+    delay(150);
+    if(sensor.LeftFront() <= 10 && sensor.LeftBack() <= 10 ){
+      Wall_Hug(SpeedL, SpeedR ,sensor);
+    delay(100);
+    }  
+      Serial.print(sensor.FrontLeft()); Serial.print(" ");
+      Serial.print(sensor.FrontMid()); Serial.print(" ");
+      Serial.print(sensor.FrontRight()); Serial.print(" ");    
+      Serial.print(sensor.LeftFront()); Serial.print(" "); 
+      Serial.print(sensor.LeftBack()); Serial.print(" "); 
+      Serial.println(sensor.Right());
+  }
+}
+
+////////////////////////////////////////////////////////////////////////
+void Forward_Hug(double SpeedL, double SpeedR, int dist) {
+  double lspeed = 0;
+  double rspeed = 0;
+  resetDist();
+  md.setSpeeds(SpeedL, SpeedR);
+  ResetTick();
+  while (distTravelled <= dist) { 
+    delay(0.005); 
+    while(Tick_L < 10 || Tick_R < 10){ 
+      lspeed = calspeedL(SpeedL, bubblesort(10, rpmtimeL));
+      rspeed = calspeedR(SpeedR, bubblesort(10, rpmtimeR));
+    }
+    md.setSpeeds(lspeed, rspeed);
+    distL = 2 * 3 * M_PI * (tick_l() / 562.25);
+    distR = 2 * 3 * M_PI * (tick_r() / 562.25);
+    distTravelled = (distL + distR) / 2;
+  }
+  md.setBrakes(400, 400);
+
+}
+/////////////////////////////////////////////////////////////////////
+void Left(double SpeedL, double SpeedR,  float degree, Sensor sensor, int cal) {
+  resetDist();
+  double lspeed = 0;
+  double rspeed = 0;
+  float Rpm_set = 100;
+  
+  double lspeed_c = convertspeedL(Rpm_set);
+  double rspeed_c = convertspeedR(Rpm_set);
+  
+  ResetTick();
+  while ( distTravelled <= (15 * M_PI / 4) / 90 * degree ) {
+    delay(0.005); 
+    lspeed = calspeedL(lspeed_c, bubblesort(10, rpmtimeL));
+    rspeed = calspeedR(rspeed_c, bubblesort(10, rpmtimeR));
+    md.setSpeeds(-lspeed, rspeed);
+    distL = 6 * M_PI * (tick_l() / 562.25);
+    distR = 6 * M_PI * (tick_r() / 562.25);
+    distTravelled = (distL + distR) / 2;
+  }
+
+  md.setBrakes(400, 367);
+
+    if(cal != 1){
+      delay(150);
+      Serial.print(sensor.FrontLeft()); Serial.print(" ");
+      Serial.print(sensor.FrontMid()); Serial.print(" ");
+      Serial.print(sensor.FrontRight()); Serial.print(" ");    
+      Serial.print(sensor.LeftFront()); Serial.print(" "); 
+      Serial.print(sensor.LeftBack()); Serial.print(" "); 
+      Serial.println(sensor.Right());
+    }
+    
+}
+
+/////////////////////////////////////////////////////////////////////
+void Left_Hug(double SpeedL, double SpeedR) {
+
+  resetDist();
+  ResetTick();
+
+  while ( distTravelled <= 0.005 ) { 
+    md.setSpeeds(-SpeedL, SpeedR);
+    distL = 2 * 3 * M_PI * (tick_l() / 562.25);
+    distR = 2 * 3 * M_PI * (tick_r() / 562.25);
+    distTravelled = (distL + distR) / 2;
+  }
+  md.setBrakes(300, 300);
+
+}
+/////////////////////////////////////////////////////////////////////
+void Right_Hug(double SpeedL, double SpeedR ) {
+  resetDist();
+  ResetTick();
+ 
+  while ( distTravelled <= 0.005 ) {
+    md.setSpeeds(SpeedL, -SpeedR);
+    distL = 2 * 3 * M_PI * (tick_l() / 562.25);
+    distR = 2 * 3 * M_PI * (tick_r() / 562.25);
+    distTravelled = (distL + distR) / 2;
+  }
+  md.setBrakes(300, 300);
+}
+
+/////////////////////////////////////////////////////////////////////
+void Wall_Hug(double SpeedL, double SpeedR, Sensor sensor) {
+  boolean condition = false;
+  int cnt = 0;
+  float Rpm_set = 8;
+  double lspeed_c = convertspeedL(Rpm_set);
+  double rspeed_c = convertspeedR(Rpm_set);
+  
+  if( abs(sensor.LeftFront() - sensor.LeftBack()) < 1 && sensor.LeftFront() <=8 && sensor.LeftBack() <=8 && sensor.LeftFront() >=5 && sensor.LeftBack() >=5 ){ 
+    return; //return if the calibration is perfect
+  }
+  while (condition == false) {
+    float sensorA3 = sensor.LeftFront();
+    float sensorA4 = sensor.LeftBack(); 
+    condition = true; 
+    while ( abs(sensorA3 - sensorA4) >= 0.04) {
+      
+      Rpm_set = 15;
+      lspeed_c = convertspeedL(Rpm_set);
+      rspeed_c = convertspeedR(Rpm_set);      
+      if (sensorA3 < sensorA4) { // 
+        Right_Hug(lspeed_c, rspeed_c);
+        sensorA3 = sensor.LeftFront(); // left front
+        sensorA4 = sensor.LeftBack();
+      }
+      else {
+        Left_Hug(lspeed_c, rspeed_c);
+        sensorA3 = sensor.LeftFront(); // left front
+        sensorA4 = sensor.LeftBack();
+      }
+      condition = false;
+    }
+    if(cnt >= 1){
+      break;
+    }
+    cnt++;
+    if ((int) sensorA3 == 6 || (int)sensorA3 == 7 ) {
+    }
+    else {
+    
+    Rpm_set = 40;
+    lspeed_c = convertspeedL(Rpm_set);
+    rspeed_c = convertspeedR(Rpm_set);
+ 
+      if (sensorA3 < 7) { 
+        Left(SpeedL, SpeedR, 93,sensor,1);
+        delay(50);
+       
+        while ( sensor.FrontLeft() < 5.5 || sensor.FrontRight() > 5.5) {
+          Forward_Hug(-lspeed_c, -rspeed_c, 0.01);
+          if(sensor.FrontLeft() > 5.5 || sensor.FrontRight() > 5.5){
+            break;
+          }
+        }
+        md.setBrakes(300, 300);
+        
+        Right(SpeedL, SpeedL, 93,sensor,1);
+  
+        sensorA3 = (int) sensor.LeftFront(); 
+        sensorA4 = (int) sensor.LeftBack();
+        sensorA3 = round(sensorA3);
+        sensorA4 = round(sensorA4);
+      }
+      else {
+        Left(SpeedL, SpeedL, 93,sensor,1);
+        delay(50);
+        md.setSpeeds(lspeed_c, rspeed_c);
+       
+        while ( sensor.FrontLeft()> 6.5 || sensor.FrontRight() > 6.5) {
+          Forward_Hug(lspeed_c, rspeed_c, 0.01);
+          if(sensor.FrontLeft() < 6.5 || sensor.FrontRight() < 6.5){
+            break;
+          }
+        }
+        md.setBrakes(300, 300);
+        delay(50);
+        Right(SpeedL, SpeedR, 93,sensor,1);
+        delay(50);
+        sensorA3 = (int) sensor.LeftFront(); 
+        sensorA4 = (int) sensor.LeftBack();
+        sensorA3 = round(sensorA3);
+        sensorA4 = round(sensorA4);
+      }
+      delay(100);
+      condition = false;
+    }
+  } 
+}
+
+///////////////////////////////////////////////////////////////////// 
+void Right(double SpeedL, double SpeedR,  float degree, Sensor sensor, int cal) {
+  resetDist();
+  float Rpm_set = 100;
+  double lspeed_c  = convertspeedL(Rpm_set);
+  double rspeed_c  = convertspeedR(Rpm_set);
+  
+  ResetTick();
+  if(cal != 1){
+    
+    if(sensor.FrontLeft() < 8){
+      while(sensor.FrontLeft() > 7){
+        Forward_Hug(SpeedL, SpeedR,  sensor.FrontLeft()-7);
+      }
+    }
+    
+    else if(sensor.FrontMid() < 8){
+      while(sensor.FrontMid() > 7){
+        Forward_Hug(SpeedL, SpeedR,  sensor.FrontMid()-7);
+      }
+    }
+    else if(sensor.FrontRight() < 8){
+      while(sensor.FrontRight() > 7){
+        Forward_Hug(SpeedL, SpeedR,  sensor.FrontRight()-7);   
+      }
+    }
+    
+    if(sensor.LeftFront() <= 8 && sensor.LeftBack() <= 8 ){
+      Wall_Hug(SpeedL, SpeedR, sensor);  
+  
+  }
+  }
+  ResetTick();
+  
+  while ( distTravelled <= (15 * M_PI / 4 ) / 90 * degree ) {
+    delay(0.005);
+    double lspeed = calspeedL(lspeed_c, bubblesort(10, rpmtimeL));
+    double rspeed = calspeedR(rspeed_c, bubblesort(10, rpmtimeR));
+    md.setSpeeds(lspeed, -rspeed);
+    distL = 2 * 3 * M_PI * (tick_l() / 562.25);
+    distR = 2 * 3 * M_PI * (tick_r() / 562.25);
+    distTravelled = (distL + distR) / 2;
+  }
+  md.setBrakes(400, 367);
+
+    if(cal != 1){
+      delay(150);
+      Serial.print(sensor.FrontLeft()); Serial.print(" ");
+      Serial.print(sensor.FrontMid()); Serial.print(" ");
+      Serial.print(sensor.FrontRight()); Serial.print(" ");    
+      Serial.print(sensor.LeftFront()); Serial.print(" "); 
+      Serial.print(sensor.LeftBack()); Serial.print(" "); 
+      Serial.println(sensor.Right());
+    }
+}
+
+/////////////////////////////////////////////////////////////////////
+int Forward_Goal(double SpeedL, double SpeedR, int Grid_Number, Sensor sensor,int last) {
+  resetDist();
+  double lspeed = 0;
+  double rspeed = 0;
+
+  SpeedL = convertspeedL(100); // change based on gradient found and y intercept
+  SpeedR = convertspeedR(100);
+  for ( int i = 0; i < Grid_Number; i++) {
+    ResetTick();
+    float Dist_p = 9.5;
+    md.setSpeeds(SpeedL, SpeedR);
+    while (distTravelled <= Dist_p) {
+      
+      if( distTravelled >=1 && last && (sensor.FrontLeft() < 5 || sensor.FrontRight() < 5 || sensor.FrontMid() <5 )){
+        md.setBrakes(300, 300);
+        return 0;
+      }
+      
+      delay(0.005); 
+      while( (Tick_L < 10 || Tick_R < 10)){
+        lspeed = calspeedL(SpeedL, bubblesort(10, rpmtimeL));
+        rspeed = calspeedR(SpeedR, bubblesort(10, rpmtimeR));
+      }
+      
+      md.setSpeeds(lspeed, rspeed);
+      distL = 2 * 3 * M_PI * (tick_l() / 562.25);
+      distR = 2 * 3 * M_PI * (tick_r() / 562.25);
+      distTravelled = (distL + distR) / 2;
+      
+    }
+    distTravelled = 0;
+    
+  }
+  md.setBrakes(400, 367); 
+}
+
+double calsensor(int S_Pin){
+  double raw = analogRead(S_Pin);
+  delay(1000);
+  return raw;
+}
+
+double SpeedL = 0;
+double SpeedR = 0;
+
+int tmp = 0;
+void setup(){
+  Serial.begin(115200);  
+  float rpm = 100; 
+  SpeedL = convertspeedL(rpm); // change this functions based on gradient found and y intercept
+  SpeedR = convertspeedR(rpm); // change this functions based on gradient found and y intercept
+  md.init();
+  Tick_L = 0;
+  Tick_R = 0;
+  for(int i = 0; i < 4; i++){
+    rpmtimeL[i] = 1830;
+    rpmtimeR[i] = 1910;
+  }
+  enableInterrupt(ENA1, Tick_IncL, RISING);
+  enableInterrupt(ENA2, Tick_IncR, RISING);
+  
+}
+
+
+int angle = 0;
+int Grid_Number = 0;
+int last =0;
+void loop() {
+  
+  while (Serial.available() > 0){
+    String data = Serial.readStringUntil('\n');
+    char actions = data.charAt(0); 
+    switch (actions) { 
+      case 'w':
+        Forward_Hug(SpeedL,SpeedR,50);//10cm
+        break;
+      case 'a':
+        Forward_Goal(SpeedL, SpeedR,3,sensor,last);
+        delay(500);
+        Left(SpeedL, SpeedR, 81.643,sensor,1); //81.673, 81.573, battery 6.42 - 81.643, battery 6.55 - 81.633
+        delay(500);
+        Forward_Goal(SpeedL, SpeedR, 2,sensor,last);
+        break;
+      case 'd':
+       Forward_Goal(SpeedL, SpeedR, 1,sensor,last);
+       delay(500);
+       Right(SpeedL, SpeedR,85.588,sensor,1); //90 degree
+       delay(500);
+       Forward_Goal(SpeedL, SpeedR, 1,sensor,last);
+       break;
+      case 'p':
+       Right_Hug(SpeedL, SpeedR);
+        break;
+      case 'k':
+        md.setBrakes(300,300);
+        break;
+      case 's':
+        Serial.print(sensor.FrontLeft()); Serial.print(" ");
+        Serial.print(sensor.FrontMid()); Serial.print(" ");
+        Serial.print(sensor.FrontRight()); Serial.print(" ");    
+        Serial.print(sensor.LeftFront()); Serial.print(" "); 
+        Serial.print(sensor.LeftBack()); Serial.print(" "); 
+        Serial.println(sensor.Right());
+                
+         break;
+      case 'j':
+        md.setSpeeds(-300,300);
+        break;
+      case 'l':    //set the angle we want, for exmaple, l75  
+        angle = data.substring(1).toInt();
+        Left(SpeedL, SpeedR,angle,sensor,0);
+        break;
+      case 'r':
+         angle = data.substring(1).toInt();
+         Right(SpeedL, SpeedR,angle,sensor,0);
+         break;
+      case 'c':
+         Wall_Hug(SpeedL, SpeedR,sensor);
+         break;
+      case 'f': 
+         Grid_Number = data.substring(1).toInt();
+         Forward(SpeedL, SpeedR, Grid_Number,sensor);
+         delay(500);
+         break;
+    
+      case 'g':
+        for(int i = 1; i < data.length();i=i+3){
+          last = 0;
+          char gact = data.charAt(i);
+          Grid_Number = data.substring(i+1,i+3).toInt();
+          if(i + 3 == data.length()){ 
+            last = 1;
+          }
+          
+          switch(gact){ //command gc
+        
+            case 'f': //command gf2
+              tmp = Forward_Goal(SpeedL, SpeedR, Grid_Number,sensor,last); 
+              if(tmp == -1){
+                Serial.println(data.substring(1,i+2));
+                i = data.length();                
+              }
+              delay(600);
+              break;
+           case 'c': //wall hug
+              Wall_Hug(SpeedL, SpeedR,sensor);
+              break;   
+            case 'h':
+              tmp = Forward_Goal(SpeedL, SpeedR, Grid_Number,sensor,last); 
+              if(tmp == -1){
+                Serial.println(data.substring(1,i+2));
+                i = data.length();   
+                Serial.print(sensor.FrontLeft()); Serial.print(" ");
+                Serial.print(sensor.FrontMid()); Serial.print(" ");
+                Serial.print(sensor.FrontRight()); Serial.print(" ");    
+                Serial.print(sensor.LeftFront()); Serial.print(" "); 
+                Serial.print(sensor.LeftBack()); Serial.print(" "); 
+                Serial.println(sensor.Right());
+              }
+              break;
+            case 'l':
+              Left(SpeedL, SpeedR,81.673,sensor,1); //90 degree
+               
+              delay(500);
+               break;
+            case 'r':
+             Right(SpeedL, SpeedR,85.588,sensor,1);  //90 degree
+              
+              delay(500);
+              break;
+            
+            }
+        }
+        break;
+    }
+
+  }
+  }
