@@ -39,9 +39,9 @@ x11 forward use xauth list and xauth add in sudo su
 [reference code](https://github.com/Elelightning/MDP_Integrated)
 
 ## Image Processing Server
-For details, please refer to image processing server's README(https://github.com/michaelTJC96/MDP_Group15/blob/main/Raspberry%20Pi/image_processing_server/README.md).
+For details, please refer to image processing server's README (https://github.com/michaelTJC96/MDP_Group15/blob/main/Raspberry%20Pi/image_processing_server/README.md).
 
 ## directory structure
-image_processing_server: code to be ran on our computer for image recognition
-mock_pc: a mock-up of algorithm (movement via commands that are entered manually)
-rpi: code to be ran on RPi
+- image_processing_server: code to be ran on our computer for image recognition
+- mock_pc: a mock-up of algorithm (movement via commands that are entered manually)
+- rpi: code to be ran on RPi
